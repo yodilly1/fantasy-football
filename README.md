@@ -16,6 +16,8 @@ Single-site league command center for the 12-team keeper auction league.
 - A traded player receives a new keeper clock with the acquiring team.
 - The system preserves prior ownership history while evaluating the current team’s clock.
 - Keeper pricing remains separate from league-money settlement.
+- The new season begins from the prior season’s rollover roster; non-keepers return to the auction pool.
+- Each team starts with a $200 auction budget and keeper costs are deducted before the auction begins.
 
 ## Current status
 
