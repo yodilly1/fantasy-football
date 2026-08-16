@@ -76,6 +76,7 @@
       money?.querySelector('.callout')&&(money.querySelector('.callout').innerHTML='<b>Use one rate policy.</b> Record the currency, amount, exchange rate, date, and credited NIS value for every payment.');
       document.querySelector('#history .card-head p')&&(document.querySelector('#history .card-head p').textContent='Review standings, transactions, and draft history from Sleeper.');
       document.querySelector('#teams .card-head p')&&(document.querySelector('#teams .card-head p').textContent='See the twelve teams and their recent results.');
+      document.querySelector('#dashboard .wide .callout')&&(document.querySelector('#dashboard .wide .callout').innerHTML='<b>Next:</b> Add your open draft times, ask the league to vote on money changes, then lock keepers. The app keeps the 2025 rollover roster separate from the 2026 auction pool.');
     }
     applyLeagueCopy();
     document.querySelector('#money .card-head')?.insertAdjacentHTML('beforeend','<button class="btn" data-action="payment">Record payment</button>');
