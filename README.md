@@ -21,7 +21,9 @@ Single-site league command center for the 12-team keeper auction league.
 
 ## Current status
 
-The initial UI prototype is in `index.html`. It is intentionally dependency-free so it can deploy to the existing Cloudflare Worker/Pages setup while the Supabase schema and authentication are wired in.
+The app is a dependency-free browser client in `index.html`. It supports a useful local setup mode immediately: draft availability blocks, proposal drafts, votes, keeper choices, and NIS/USD payment drafts persist in the browser. When the public Supabase anon key is added to `config.js` and migrations `0006`/`0007` are applied, magic-link sign-in and manager invite claims enable the shared multi-user mode.
+
+`config.js` must contain only the public anon key. Never put the Supabase service-role key in a browser-deployed file.
 
 ## Planned backend tables
 
@@ -34,3 +36,10 @@ The initial UI prototype is in `index.html`. It is intentionally dependency-free
 - Cloudflare Worker: `fantasy-football`
 
 Google Cloud is only needed when Google Calendar free/busy OAuth is activated.
+
+## Human setup needed before shared launch
+
+1. Add the Supabase public anon key to `config.js`.
+2. Apply migrations `0006_authenticated_workflows.sql` and `0007_seed_2026_league_and_invites.sql` in the Supabase SQL editor.
+3. Configure Supabase Auth email provider / redirect URL for the Cloudflare deployment.
+4. Generate manager invite tokens for the twelve managers and distribute each privately.
