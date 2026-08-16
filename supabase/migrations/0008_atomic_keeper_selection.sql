@@ -87,3 +87,5 @@ begin
 end;
 $$;
 
+revoke execute on function public.save_keeper_selections(uuid, uuid, jsonb) from anon;
+grant execute on function public.save_keeper_selections(uuid, uuid, jsonb) to authenticated;
