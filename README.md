@@ -21,7 +21,7 @@ Single-site league command center for the 12-team keeper auction league.
 
 ## Current status
 
-The app is a dependency-free browser client in `index.html`. It supports a useful local setup mode immediately: draft availability blocks, proposal drafts, votes, keeper choices, and NIS/USD payment drafts persist in the browser. Availability is normalized to UTC for cross-time-zone matching. The public Supabase anon key is configured, and authenticated shared mode supports availability, proposals, votes, obligations, payments, atomic keeper selection/budget updates, commissioner-triggered rollover import, and auction-pool generation after migrations `0006`–`0010` are applied.
+The app is a dependency-free browser client in `index.html`. It supports a useful local setup mode immediately: draft availability blocks, proposal drafts, votes, keeper choices, and NIS/USD payment drafts persist in the browser. Availability is normalized to UTC for cross-time-zone matching, and ranked windows can be exported to Google Calendar, Outlook, or an `.ics` file. The public Supabase anon key is configured, and authenticated shared mode supports availability, proposals, votes, obligations, payments, atomic keeper selection/budget updates, commissioner-triggered rollover import, and auction-pool generation after migrations `0006`–`0011` are applied.
 
 `config.js` must contain only the public anon key. Never put the Supabase service-role key in a browser-deployed file.
 
