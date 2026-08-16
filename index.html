@@ -55,6 +55,28 @@
     const toast=document.getElementById('toast'); const show=(msg)=>{toast.textContent=msg;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2400)};
     const storeKey='uwc-2026-league-state'; const saved=JSON.parse(localStorage.getItem(storeKey)||'{}'); const supa=window.UWC_SUPABASE||{}; const sessionKey='uwc-supabase-session';
     const state={blocks:saved.blocks||[],proposals:saved.proposals||[],payments:saved.payments||[],keepers:saved.keepers||[]}; const persist=()=>localStorage.setItem(storeKey,JSON.stringify(state));
+    function applyLeagueCopy(){
+      document.querySelector('.eyebrow').textContent='2026 setup · Ugh Who Cares';
+      document.querySelector('.top h1').textContent='Get the 2026 season ready.';
+      document.querySelector('.subtitle').textContent='Pick a draft time, lock keepers, and track league money in one place.';
+      const hero=document.querySelector('.hero');
+      hero?.querySelector('.card-head p')&&(hero.querySelector('.card-head p').textContent='Complete the setup before draft day.');
+      hero?.querySelector('.callout')&&(hero.querySelector('.callout').innerHTML='<b>Start with availability.</b> Add the times you can draft. After the league picks a window, lock keepers. Every other 2025 player returns to the auction pool.');
+      hero?.querySelector('[data-action="schedule"]')&&(hero.querySelector('[data-action="schedule"]').textContent='Add availability');
+      const decisions=document.querySelector('#dashboard .card.paper');
+      decisions?.querySelector('.card-head p')&&(decisions.querySelector('.card-head p').textContent='Open the rate votes before anyone pays.');
+      const keeper=document.querySelector('#keepers');
+      keeper?.querySelector('.card-head p')&&(keeper.querySelector('.card-head p').textContent='Choose up to two players from the 2025 rollover roster. Keeper costs reduce the $200 auction budget.');
+      const rules=document.querySelector('#rules');
+      rules?.querySelector('.card-head p')&&(rules.querySelector('.card-head p').textContent='Propose a change, explain it, and let the league vote.');
+      rules?.querySelector('.rule-list')&&(rules.querySelector('.rule-list').innerHTML='<li><b>Two-year keeper maximum</b><span>Current rule. A player can be kept twice by the current team.</span></li><li><b>Keeper clock after a trade</b><span>Current rule. The acquiring team starts a new clock.</span></li><li><b>2026 buy-in rate</b><span>Workbook baseline: ₪350. Any increase needs a league vote.</span></li><li><b>2026 weekly high score</b><span>Workbook baseline: ₪45. Any increase needs a league vote.</span></li>');
+      const money=document.querySelector('#money');
+      money?.querySelector('.card-head p')&&(money.querySelector('.card-head p').textContent='Track buy-ins, weekly prizes, and USD-equivalent payments.');
+      money?.querySelector('.callout')&&(money.querySelector('.callout').innerHTML='<b>Use one rate policy.</b> Record the currency, amount, exchange rate, date, and credited NIS value for every payment.');
+      document.querySelector('#history .card-head p')&&(document.querySelector('#history .card-head p').textContent='Review standings, transactions, and draft history from Sleeper.');
+      document.querySelector('#teams .card-head p')&&(document.querySelector('#teams .card-head p').textContent='See the twelve teams and their recent results.');
+    }
+    applyLeagueCopy();
     document.querySelector('#money .card-head')?.insertAdjacentHTML('beforeend','<button class="btn" data-action="payment">Record payment</button>');
     document.querySelector('#keepers .card-head')?.insertAdjacentHTML('beforeend','<button class="btn" data-action="keepers">Choose keepers</button>');
     const go=view=>{document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));document.querySelectorAll('.view').forEach(v=>v.hidden=true);document.getElementById(view).hidden=false};
