@@ -21,7 +21,7 @@ Single-site league command center for the 12-team keeper auction league.
 
 ## Current status
 
-The app is a dependency-free browser client in `index.html`. It supports a useful local setup mode immediately: draft availability blocks, proposal drafts, votes, keeper choices, and NIS/USD payment drafts persist in the browser. When the public Supabase anon key is added to `config.js` and migrations `0006`/`0007` are applied, magic-link sign-in and manager invite claims enable the shared multi-user mode.
+The app is a dependency-free browser client in `index.html`. It supports a useful local setup mode immediately: draft availability blocks, proposal drafts, votes, keeper choices, and NIS/USD payment drafts persist in the browser. The public Supabase anon key is now configured, and the app has shared-sync code for authenticated availability, proposals, and votes. Migrations `0006`/`0007` still need to be applied before the shared mode can be verified.
 
 `config.js` must contain only the public anon key. Never put the Supabase service-role key in a browser-deployed file.
 
