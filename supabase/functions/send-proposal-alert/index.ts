@@ -21,7 +21,7 @@ Deno.serve(async (request) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const brevoKey = Deno.env.get('BREVO_API_KEY');
     const senderEmail = Deno.env.get('LEAGUE_SENDER_EMAIL') || 'clarityce@gmail.com';
-    const leagueUrl = Deno.env.get('LEAGUE_APP_URL') || 'https://fantasy-football.lee-403.workers.dev/';
+    const leagueUrl = Deno.env.get('LEAGUE_APP_URL') || 'https://ugh-who-cares.pages.dev/';
     if (!brevoKey) throw new Error('Email delivery is not configured yet.');
 
     const memberClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
@@ -76,4 +76,3 @@ Deno.serve(async (request) => {
     return Response.json({ error: message }, { status: 400, headers: corsHeaders });
   }
 });
-

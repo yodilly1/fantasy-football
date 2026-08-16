@@ -2,6 +2,8 @@
 
 A dependency-free league web app for the 12-team Sleeper keeper-auction league.
 
+Live app: https://ugh-who-cares.pages.dev/
+
 ## What it does
 
 - Email-only league entry with one locked team assignment per account.
@@ -38,7 +40,7 @@ A dependency-free league web app for the 12-team Sleeper keeper-auction league.
 
 ## Stack and cost
 
-- Frontend and hosting: Cloudflare Workers static assets (free tier).
+- Frontend and hosting: Cloudflare Pages static assets (free tier).
 - Database and lightweight authentication: Supabase (free tier).
 - League history: Sleeper's public API, imported to `data/league-history.json`.
 - Google availability: Google Identity Services with the narrow `calendar.freebusy` scope; no event names or refresh tokens are stored.
