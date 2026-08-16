@@ -47,8 +47,8 @@ Google Calendar uses the free `UWC League HQ` Google Cloud project. Standard lea
 
 - `index.html` — semantic application shell.
 - `styles.css` — responsive interface system.
-- `app.js` — onboarding, scheduling, keepers, voting, money, and history workflows.
-- `config.js` — public Supabase configuration and Google OAuth Client ID; no private credentials.
+- `league-app.js` — onboarding, scheduling, keepers, voting, money, and history workflows.
+- `league-settings.js` — public Supabase configuration and Google OAuth Client ID; no private credentials.
 - `data/league-history.json` — imported Sleeper history.
 - `supabase/migrations/` — schema, policies, and server-validated workflows.
 - `scripts/sleeper_import.py` — Sleeper history refresh.
