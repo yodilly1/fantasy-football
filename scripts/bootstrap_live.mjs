@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
 
-const configSource = await fs.readFile(new URL('../config.js', import.meta.url), 'utf8');
+const configSource = await fs.readFile(new URL('../league-settings.js', import.meta.url), 'utf8');
 const sandbox = {window: {}};
 vm.runInNewContext(configSource, sandbox);
 const {url, anonKey} = sandbox.window.UWC_SUPABASE;

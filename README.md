@@ -10,8 +10,10 @@ A dependency-free league web app for the 12-team Sleeper keeper-auction league.
 - Two-hour draft-window ranking in Eastern and Israel time.
 - Sleeper-powered keeper calculator using 2024–2026 drafts, rosters, and transactions.
 - Maximum two keepers, two-year player clock, and trade clock resets.
+- Final keeper submission lock, with commissioner-only reopening.
 - $200 auction budget with the workbook's keeper taxes, positional floors, waiver price, and ADP-exception range.
 - Rule proposals and one vote per manager.
+- Automatic email alerts to every connected manager when a proposal opens.
 - NIS obligations with either NIS or USD settlement and a recorded exchange rate.
 - Sleeper record book and 2026 rollover team directory.
 
@@ -20,6 +22,7 @@ A dependency-free league web app for the 12-team Sleeper keeper-auction league.
 - Buy-ins, weekly prizes, and payouts are denominated in NIS.
 - Managers may settle in NIS or the USD equivalent.
 - Each USD settlement records the amount, NIS-per-USD rate, and credited NIS value.
+- The payment form suggests the current Bank of Israel representative USD/ILS rate while allowing the league's agreed rate to be recorded.
 - Auction and keeper values are fantasy dollars and never mix with the money ledger.
 
 ## Keeper model
@@ -39,6 +42,7 @@ A dependency-free league web app for the 12-team Sleeper keeper-auction league.
 - Database and lightweight authentication: Supabase (free tier).
 - League history: Sleeper's public API, imported to `data/league-history.json`.
 - Google availability: Google Identity Services with the narrow `calendar.freebusy` scope; no event names or refresh tokens are stored.
+- Vote email delivery: Supabase Edge Functions plus Brevo's free transactional-email tier.
 - Outlook availability: local `.ics` import, with a direct Microsoft connection available as a future enhancement.
 
 Google Calendar uses the free `UWC League HQ` Google Cloud project. Standard league-scale usage remains within the free API tier.

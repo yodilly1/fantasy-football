@@ -25,6 +25,8 @@
     votes: [],
     keeperSelections: [],
     allKeeperSelections: [],
+    teamBudget: null,
+    allTeamBudgets: [],
     obligations: [],
     settlements: [],
     draftOptions: [],
@@ -102,6 +104,22 @@
     return body;
   }
 
+  async function invokeFunction(name, payload, retry = true) {
+    const response = await fetch(`${config.url}/functions/v1/${name}`, {
+      method: 'POST',
+      headers: {
+        'apikey': config.anonKey,
+        'Authorization': `Bearer ${app.session?.access_token || ''}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (response.status === 401 && retry && await refreshSession()) return invokeFunction(name, payload, false);
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || body.message || `Notification failed (${response.status}).`);
+    return body;
+  }
+
   function accountPassword(email) {
     const encoded = btoa(email.toLowerCase()).replace(/[^a-z0-9]/gi, '').slice(0, 48);
     return `UWC-2026-${encoded}-league`;
@@ -160,7 +178,7 @@
     app.managerId = await api('rpc/current_manager_id', {method: 'POST', body: '{}'});
     if (!app.managerId) return false;
 
-    const [managerRows, memberships, managers, allMemberships, blocks, proposals, votes, keeperSelections, obligations, settlements, draftOptions] = await Promise.all([
+    const [managerRows, memberships, managers, allMemberships, blocks, proposals, votes, keeperSelections, obligations, settlements, draftOptions, teamBudgets] = await Promise.all([
       api(`managers?id=eq.${app.managerId}&select=id,display_name,timezone,preferred_payment_currency`),
       api(`team_memberships?season_id=eq.${app.seasonId}&manager_id=eq.${app.managerId}&select=team_id,is_commissioner,teams(id,display_name,sleeper_team_id)`),
       api('managers?select=id,display_name,auth_user_id,timezone,preferred_payment_currency&order=display_name'),
@@ -172,6 +190,7 @@
       api(`league_obligations?season_id=eq.${app.seasonId}&select=*&order=created_at.desc`),
       api('settlements?select=*&order=created_at.desc'),
       api(`draft_options?season_id=eq.${app.seasonId}&select=*&order=score.desc`),
+      api(`season_team_budgets?season_id=eq.${app.seasonId}&select=*`),
     ]);
 
     app.manager = managerRows?.[0] || null;
@@ -188,6 +207,8 @@
     app.obligations = obligations || [];
     app.settlements = settlements || [];
     app.draftOptions = draftOptions || [];
+    app.allTeamBudgets = teamBudgets || [];
+    app.teamBudget = app.allTeamBudgets.find((row) => row.team_id === app.teamId) || null;
     app.ownership = app.teamId ? await api(`player_ownership_history?season_id=eq.${app.seasonId}&team_id=eq.${app.teamId}&select=*,players(id,name,position,nfl_team)`) : [];
 
     if (app.keeperSelections.length) {
@@ -268,7 +289,7 @@
   function renderDashboard() {
     const connected = app.managers.filter((manager) => manager.auth_user_id).length;
     const availableManagers = new Set(app.blocks.filter((block) => block.availability !== 'unavailable').map((block) => block.manager_id)).size;
-    const keeperTeams = new Set(app.allKeeperSelections.map((selection) => selection.team_id)).size;
+    const keeperTeams = app.allTeamBudgets.filter((budget) => budget.status === 'keepers_locked').length;
     const openProposals = app.proposals.filter((proposal) => proposal.status === 'open').length;
     $('#dashboard-metrics').innerHTML = [
       ['Managers connected', `${connected} / 12`, connected === 12 ? 'Everyone is in' : `${12 - connected} still missing`],
@@ -300,9 +321,9 @@
     if (!app.isCommissioner) { panel.hidden = true; return; }
     panel.hidden = false;
     const rows = app.memberships.map((membership) => ({
-      teamId: membership.team_id, team: membership.teams?.display_name || 'Team', manager: membership.managers?.display_name || 'Manager', claimed: Boolean(membership.managers?.auth_user_id),
+      teamId: membership.team_id, team: membership.teams?.display_name || 'Team', manager: membership.managers?.display_name || 'Manager', claimed: Boolean(membership.managers?.auth_user_id), locked: app.allTeamBudgets.find((budget) => budget.team_id === membership.team_id)?.status === 'keepers_locked',
     })).sort((a, b) => Number(a.claimed) - Number(b.claimed) || a.team.localeCompare(b.team));
-    panel.innerHTML = `<div class="panel-head"><div><span class="kicker">Commissioner</span><h3>Manager coverage</h3><p>Claimed teams are locked. Release one only when its manager needs to reconnect.</p></div><button class="button secondary" data-action="copy-invite">Copy league link</button></div><div class="rows">${rows.map((row) => `<div class="data-row"><div><b>${escapeHtml(row.team)}</b><small>${escapeHtml(row.manager)}</small></div><div class="row-actions"><span class="status ${row.claimed ? 'success' : 'warning'}">${row.claimed ? 'Connected' : 'Missing'}</span>${row.claimed && row.teamId !== app.teamId ? `<button class="button danger" data-release-team="${row.teamId}">Release</button>` : ''}</div></div>`).join('')}</div>`;
+    panel.innerHTML = `<div class="panel-head"><div><span class="kicker">Commissioner</span><h3>Manager coverage</h3><p>Claimed teams are locked. Release one only when its manager needs to reconnect.</p></div><button class="button secondary" data-action="copy-invite">Copy league link</button></div><div class="rows">${rows.map((row) => `<div class="data-row"><div><b>${escapeHtml(row.team)}</b><small>${escapeHtml(row.manager)}</small></div><div class="row-actions">${row.locked ? '<span class="status success">Keepers locked</span>' : ''}<span class="status ${row.claimed ? 'success' : 'warning'}">${row.claimed ? 'Connected' : 'Missing'}</span>${row.locked ? `<button class="button secondary" data-reopen-team="${row.teamId}">Reopen keepers</button>` : ''}${row.claimed && row.teamId !== app.teamId ? `<button class="button danger" data-release-team="${row.teamId}">Release</button>` : ''}</div></div>`).join('')}</div>`;
   }
 
   function normalizeBlock(row) {
@@ -529,10 +550,13 @@
       const selected = selectedIds.has(String(player.id));
       const source = player.acquisition === 'free_agent' ? 'Waiver / free agent' : player.acquisition === 'trade' ? 'Trade · clock reset' : player.acquisition === 'keeper' ? '2025 keeper' : '2025 auction';
       const costNote = player.potential > player.final ? `Standard $${player.final}; ADP exception could be $${player.potential}` : player.acquisition === 'free_agent' ? 'Flat waiver price' : '$5 tax and position floor applied';
-      return `<tr class="${selected ? 'is-selected' : ''}"><td><div class="player"><b>${escapeHtml(player.name)}</b><small>${escapeHtml(player.position || '—')} · ${escapeHtml(player.team || 'FA')}</small></div></td><td><b>${source}</b></td><td class="money">${player.acquisition === 'free_agent' ? '—' : `$${player.lastCost}`}</td><td><span class="eligibility ${player.eligible ? '' : 'blocked'}">${player.eligible ? `${player.yearsUsed} of 2 used` : 'Two-year limit reached'}</span></td><td><span class="money">$${player.final}</span><div class="rule-note">${costNote}</div></td><td><button class="button ${selected ? 'secondary' : 'primary'}" data-keeper-player="${player.id}" ${!player.eligible && !selected ? 'disabled' : ''}>${selected ? 'Remove' : 'Select'}</button></td></tr>`;
+      const locked = app.teamBudget?.status === 'keepers_locked';
+      return `<tr class="${selected ? 'is-selected' : ''}"><td><div class="player"><b>${escapeHtml(player.name)}</b><small>${escapeHtml(player.position || '—')} · ${escapeHtml(player.team || 'FA')}</small></div></td><td><b>${source}</b></td><td class="money">${player.acquisition === 'free_agent' ? '—' : `$${player.lastCost}`}</td><td><span class="eligibility ${player.eligible ? '' : 'blocked'}">${player.eligible ? `${player.yearsUsed} of 2 used` : 'Two-year limit reached'}</span></td><td><span class="money">$${player.final}</span><div class="rule-note">${costNote}</div></td><td><button class="button ${selected ? 'secondary' : 'primary'}" data-keeper-player="${player.id}" ${locked || (!player.eligible && !selected) ? 'disabled' : ''}>${selected ? 'Remove' : 'Select'}</button></td></tr>`;
     }).join('') : '<tr><td colspan="6"><div class="empty-state">No players match that search.</div></td></tr>';
     const spend = app.selectedKeepers.reduce((total, player) => total + Number(player.finalCost ?? player.final ?? 0), 0);
     $('#keeper-budget').innerHTML = `<div><span>Selected</span><strong>${app.selectedKeepers.length} / 2</strong></div><div><span>Keeper spend</span><strong>$${spend}</strong></div><div><span>Auction budget left</span><strong>$${200 - spend}</strong></div>`;
+    const lockButton = $('#keeper-lock-button');
+    if (lockButton) { const locked = app.teamBudget?.status === 'keepers_locked'; lockButton.textContent = locked ? 'Keepers locked ✓' : 'Lock keeper choices'; lockButton.disabled = locked; }
   }
 
   async function toggleKeeper(playerId) {
@@ -561,20 +585,32 @@
     } catch (reason) { toast(reason.message || 'Keeper choices could not be synced.'); }
   }
 
+  async function lockKeepers() {
+    if (app.teamBudget?.status === 'keepers_locked') return;
+    const names = app.selectedKeepers.length ? app.selectedKeepers.map((keeper) => keeper.name).join(' and ') : 'no players';
+    if (!confirm(`Lock ${names} as your final keeper decision? Only the commissioner can reopen it.`)) return;
+    try { await api('rpc/lock_keeper_selections', {method: 'POST', body: JSON.stringify({target_season: app.seasonId, target_team: app.teamId})}); await refreshData(); toast('Keeper decision locked.'); }
+    catch (reason) { toast(reason.message || 'Keeper decision could not be locked.'); }
+  }
+
   function renderVotes() {
     const root = $('#proposal-list');
     if (!app.proposals.length) { root.innerHTML = '<article class="panel"><div class="empty-state">No league proposals yet.</div></article>'; return; }
     root.innerHTML = app.proposals.map((proposal) => {
       const votes = app.votes.filter((vote) => vote.proposal_id === proposal.id), yes = votes.filter((vote) => vote.choice === 'yes').length, no = votes.filter((vote) => vote.choice === 'no').length, mine = votes.find((vote) => vote.manager_id === app.managerId)?.choice;
-      return `<article class="panel proposal-card"><div class="proposal-meta"><span class="status">${escapeHtml(proposal.category)}</span><span class="status ${proposal.status === 'open' ? 'success' : ''}">${escapeHtml(proposal.status)}</span></div><h3>${escapeHtml(proposal.title)}</h3><p>${escapeHtml(proposal.description || proposal.proposed_value || '')}</p>${proposal.proposed_value ? `<p style="margin-top:8px"><b>${escapeHtml(proposal.current_value || 'Current')}</b> → <b>${escapeHtml(proposal.proposed_value)}</b></p>` : ''}<div class="vote-tally"><div class="vote-count"><span>Yes</span><strong>${yes}</strong></div><div class="vote-count"><span>No</span><strong>${no}</strong></div></div>${proposal.status === 'open' ? `<div class="proposal-actions"><button class="button ${mine === 'yes' ? 'primary' : 'secondary'}" data-vote="${proposal.id}" data-choice="yes">Vote yes</button><button class="button ${mine === 'no' ? 'primary' : 'secondary'}" data-vote="${proposal.id}" data-choice="no">Vote no</button></div>` : ''}</article>`;
+      const emailStatus = proposal.alert_sent_at ? `Email sent to ${proposal.alert_recipient_count || 0}` : proposal.alert_error ? 'Email needs retry' : 'Email pending';
+      return `<article class="panel proposal-card"><div class="proposal-meta"><span class="status">${escapeHtml(proposal.category)}</span><span class="status ${['open', 'passed'].includes(proposal.status) ? 'success' : ''}">${escapeHtml(proposal.status)}</span><span class="status ${proposal.alert_error ? 'warning' : ''}">${escapeHtml(emailStatus)}</span></div><h3>${escapeHtml(proposal.title)}</h3><p>${escapeHtml(proposal.description || proposal.proposed_value || '')}</p>${proposal.proposed_value ? `<p style="margin-top:8px"><b>${escapeHtml(proposal.current_value || 'Current')}</b> → <b>${escapeHtml(proposal.proposed_value)}</b></p>` : ''}<div class="vote-tally"><div class="vote-count"><span>Yes · ${proposal.required_yes_votes || 7} needed</span><strong>${yes}</strong></div><div class="vote-count"><span>No</span><strong>${no}</strong></div></div>${proposal.status === 'open' ? `<div class="proposal-actions"><button class="button ${mine === 'yes' ? 'primary' : 'secondary'}" data-vote="${proposal.id}" data-choice="yes">Vote yes</button><button class="button ${mine === 'no' ? 'primary' : 'secondary'}" data-vote="${proposal.id}" data-choice="no">Vote no</button></div>` : ''}${proposal.alert_error && proposal.author_manager_id === app.managerId ? `<button class="text-button proposal-retry" data-retry-alert="${proposal.id}">Retry email alert</button>` : ''}</article>`;
     }).join('');
   }
 
   function proposalModal() {
     openModal({title: 'New league proposal', copy: 'A standard rule change passes with seven yes votes.', submitLabel: 'Open voting', body: `<div class="form-grid"><div class="field full"><label>Title</label><input id="proposal-title" placeholder="Increase the buy-in" required></div><div class="field"><label>Category</label><select id="proposal-category"><option value="finance">Finance</option><option value="keeper">Keeper</option><option value="scoring">Scoring</option><option value="draft">Draft</option><option value="punishment">Punishment</option><option value="other">Other</option></select></div><div class="field"><label>Effective season</label><input id="proposal-season" type="number" value="2027"></div><div class="field"><label>Current value</label><input id="proposal-current" placeholder="₪350"></div><div class="field"><label>Proposed value</label><input id="proposal-value" placeholder="₪400"></div><div class="field full"><label>Reason</label><textarea id="proposal-description" placeholder="Explain why the league should make this change"></textarea></div></div>`, onSubmit: async (modal) => {
       const title = $('#proposal-title', modal).value.trim(), description = $('#proposal-description', modal).value.trim(); if (!title) throw new Error('Add a proposal title.');
-      await api('proposals', {method: 'POST', headers: {Prefer: 'return=minimal'}, body: JSON.stringify({season_id: app.seasonId, author_manager_id: app.managerId, title, description: description || title, category: $('#proposal-category', modal).value, current_value: $('#proposal-current', modal).value.trim() || null, proposed_value: $('#proposal-value', modal).value.trim() || null, effective_season: Number($('#proposal-season', modal).value) || 2027, required_yes_votes: 7, status: 'open'})});
-      await refreshData(); toast('Proposal opened for voting.'); return true;
+      const created = await api('proposals', {method: 'POST', headers: {Prefer: 'return=representation'}, body: JSON.stringify({season_id: app.seasonId, author_manager_id: app.managerId, title, description: description || title, category: $('#proposal-category', modal).value, current_value: $('#proposal-current', modal).value.trim() || null, proposed_value: $('#proposal-value', modal).value.trim() || null, effective_season: Number($('#proposal-season', modal).value) || 2027, required_yes_votes: 7, status: 'open'})});
+      let notice = 'Proposal opened for voting.';
+      try { const alert = await invokeFunction('send-proposal-alert', {proposalId: created?.[0]?.id}); notice = `Proposal opened · ${alert.sent} email alert${alert.sent === 1 ? '' : 's'} sent.`; }
+      catch { notice = 'Proposal opened. Email delivery needs a retry.'; }
+      await refreshData(); toast(notice); return true;
     }});
   }
 
@@ -594,16 +630,18 @@
     }).join('');
   }
 
-  function recordPaymentModal() {
+  async function recordPaymentModal() {
     const mine = app.obligations.filter((row) => row.manager_id === app.managerId);
     if (!mine.length) return toast('The commissioner has not opened your 2026 obligation yet.');
-    openModal({title: 'Record payment', copy: 'The obligation remains in NIS. USD payments store the exact exchange rate and credited NIS amount.', submitLabel: 'Submit payment', body: `<div class="form-grid"><div class="field full"><label>Obligation</label><select id="payment-obligation">${mine.map((row) => `<option value="${row.id}">${escapeHtml(row.description)} · ₪${Number(row.amount_nis).toFixed(0)}</option>`).join('')}</select></div><div class="field"><label>Currency paid</label><select id="payment-currency"><option>NIS</option><option>USD</option></select></div><div class="field"><label>Amount paid</label><input id="payment-amount" type="number" min="0" step=".01" required></div><div class="field full"><label>NIS per USD</label><input id="payment-rate" type="number" min="0" step=".0001" value="3.15"></div></div>`, onSubmit: async (modal) => {
+    let market = null;
+    try { market = await invokeFunction('exchange-rate', {}); } catch { /* manual entry remains available */ }
+    const rateCopy = market?.rate ? `Bank of Israel representative rate: ${Number(market.rate).toFixed(4)} NIS/USD, updated ${new Date(market.lastUpdated).toLocaleDateString()}. You may replace it with the rate the league agreed to use.` : 'Enter the NIS-per-USD rate the league agreed to use.';
+    openModal({title: 'Record payment', copy: `The obligation remains in NIS. ${rateCopy}`, submitLabel: 'Submit payment', body: `<div class="form-grid"><div class="field full"><label>Obligation</label><select id="payment-obligation">${mine.map((row) => `<option value="${row.id}">${escapeHtml(row.description)} · ₪${Number(row.amount_nis).toFixed(0)}</option>`).join('')}</select></div><div class="field"><label>Currency paid</label><select id="payment-currency"><option>NIS</option><option>USD</option></select></div><div class="field"><label>Amount paid</label><input id="payment-amount" type="number" min="0" step=".01" required></div><div class="field full"><label>NIS per USD</label><input id="payment-rate" type="number" min="0" step=".0001" value="${market?.rate || ''}" placeholder="e.g. 2.9540"></div></div>`, onSubmit: async (modal) => {
       const obligation = mine.find((row) => row.id === $('#payment-obligation', modal).value), currency = $('#payment-currency', modal).value, amount = Number($('#payment-amount', modal).value), rate = Number($('#payment-rate', modal).value);
       if (!obligation || !amount) throw new Error('Choose an obligation and enter the amount paid.'); if (currency === 'USD' && !rate) throw new Error('Enter the NIS-per-USD rate.');
-      const payload = {obligation_id: obligation.id, payer_manager_id: app.managerId, recipient_manager_id: obligation.recipient_manager_id, payment_currency: currency, payment_amount: amount, exchange_rate_nis_per_usd: currency === 'USD' ? rate : null, credited_nis: currency === 'USD' ? amount * rate : amount, status: 'submitted', paid_at: new Date().toISOString()};
       const existing = app.settlements.find((row) => row.obligation_id === obligation.id && row.payer_manager_id === app.managerId);
       if (existing) throw new Error('A payment is already recorded for this obligation. Ask the commissioner before changing it.');
-      await api('settlements', {method: 'POST', headers: {Prefer: 'return=minimal'}, body: JSON.stringify(payload)});
+      await api('rpc/submit_settlement', {method: 'POST', body: JSON.stringify({target_obligation: obligation.id, paid_currency: currency, paid_amount: amount, nis_per_usd: currency === 'USD' ? rate : null})});
       await refreshData(); toast('Payment submitted for commissioner confirmation.'); return true;
     }});
   }
@@ -619,6 +657,9 @@
   }
 
   function renderRules() {
+    const current = app.history?.seasons?.find((season) => season.year === 2026);
+    const settings = current?.settings || {};
+    const scoring = current?.scoring_settings || {};
     const rules = [
       ['Keeper limit', 'Maximum two keepers. There are no positional limits.', ['A player can be kept for two additional seasons by the same team.', 'A traded player starts a new keeper clock with the acquiring team.']],
       ['Keeper prices', 'Auction players and prior keepers cost last year’s price plus $5.', ['RB floor: $13', 'WR floor: $14', 'QB, TE, K, and DEF have no floor.', 'Waiver and free-agent keepers cost a flat $5.']],
@@ -626,6 +667,9 @@
       ['Auction', 'Each team starts with a $200 fantasy-dollar budget. Keeper costs are deducted before the auction.', ['All non-keepers return to the draft pool.', 'Auction dollars never mix with league payments.']],
       ['League money', 'Buy-ins, weekly prizes, and payouts are denominated in NIS.', ['Current buy-in: ₪350', 'Weekly high score: ₪45 including playoffs', 'USD settlement is allowed at a recorded exchange rate.']],
       ['2025 payout baseline', 'The historical workbook records the prior distribution.', ['First: ₪2,100', 'Second: ₪980', 'Third: ₪350']],
+      ['League format', `${settings.num_teams || 12} teams; ${settings.playoff_teams || 6} reach the playoffs starting in Week ${settings.playoff_week_start || 15}.`, [`Trade deadline: Week ${settings.trade_deadline || 12}`, `FAAB waiver budget: $${settings.waiver_budget || 100}`, 'Two IR slots', 'Draft-pick trading is enabled.']],
+      ['Starting lineup', 'Fifteen active roster spots plus two IR slots.', ['1 QB', '2 RB', '2 WR', '1 TE', '1 FLEX', '1 K', '1 DEF', '6 bench']],
+      ['Core scoring', 'Sleeper scoring is the source of truth.', [`Half-PPR: ${Number(scoring.rec ?? .5)} per reception`, `Passing TD: ${Number(scoring.pass_td ?? 4)} points`, 'Rushing / receiving TD: 6 points', '1 point per 25 passing yards', '1 point per 10 rushing or receiving yards', 'Turnover lost: −2 points']],
     ];
     $('#rule-grid').innerHTML = rules.map(([title, description, list]) => `<article class="panel rule-card"><span class="kicker">Rule</span><h3>${title}</h3><p>${description}</p><ul class="rule-list">${list.map((item) => `<li>${item}</li>`).join('')}</ul></article>`).join('');
   }
@@ -723,7 +767,9 @@
     const deleteBlock = event.target.closest('[data-delete-block]'); if (deleteBlock) { try { await api(`availability_blocks?id=eq.${deleteBlock.dataset.deleteBlock}`, {method: 'DELETE'}); await refreshData(); toast('Availability removed.'); } catch (reason) { toast(reason.message); } return; }
     const selectDraft = event.target.closest('[data-select-draft]'); if (selectDraft) return selectDraftWindow(Number(selectDraft.dataset.selectDraft));
     const release = event.target.closest('[data-release-team]'); if (release) return releaseTeam(release.dataset.releaseTeam);
+    const reopen = event.target.closest('[data-reopen-team]'); if (reopen) { try { await api('rpc/reopen_keeper_selections', {method: 'POST', body: JSON.stringify({target_season: app.seasonId, target_team: reopen.dataset.reopenTeam})}); await refreshData(); toast('Keeper choices reopened.'); } catch (reason) { toast(reason.message || 'Keeper choices could not be reopened.'); } return; }
     const settlement = event.target.closest('[data-settlement]'); if (settlement) { try { await api(`settlements?id=eq.${settlement.dataset.settlement}`, {method: 'PATCH', body: JSON.stringify({status: settlement.dataset.status, confirmed_at: new Date().toISOString()})}); await refreshData(); toast('Payment confirmed.'); } catch (reason) { toast(reason.message); } return; }
+    const retryAlert = event.target.closest('[data-retry-alert]'); if (retryAlert) { try { const result = await invokeFunction('send-proposal-alert', {proposalId: retryAlert.dataset.retryAlert}); await refreshData(); toast(`${result.sent} email alert${result.sent === 1 ? '' : 's'} sent.`); } catch (reason) { toast(reason.message || 'Email alert could not be sent.'); } return; }
     const calendar = event.target.closest('[data-calendar]'); if (calendar) { app.calendarProvider = calendar.dataset.calendar; $('#calendar-file').click(); return; }
     const action = event.target.closest('[data-action]')?.dataset.action;
     if (action === 'manual-availability') manualAvailabilityModal();
@@ -732,6 +778,7 @@
     if (action === 'record-payment') recordPaymentModal();
     if (action === 'open-obligations') openObligationsModal();
     if (action === 'sync-rosters') importRosters();
+    if (action === 'lock-keepers') lockKeepers();
     if (action === 'copy-invite') navigator.clipboard?.writeText(location.origin + location.pathname).then(() => toast('League link copied.'));
   });
 
