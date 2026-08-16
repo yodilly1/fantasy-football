@@ -48,9 +48,9 @@
       </section>
 
       <section class="view" id="view-draft" hidden>
-        <div class="section-intro"><div><span class="kicker">Draft coordination</span><h2>Find one time that works.</h2><p>Add open windows manually or import busy events from a Google or Outlook calendar file. Every result is shown in Eastern and Israel time.</p></div><button class="button primary" data-action="manual-availability">Add open time</button></div>
+        <div class="section-intro"><div><span class="kicker">Draft coordination</span><h2>Find one time that works.</h2><p>Connect Google Calendar, import Outlook, or add open times manually. We store availability—not event names. Every result is shown in Eastern and Israel time.</p></div><button class="button primary" data-action="manual-availability">Add open time</button></div>
         <div class="provider-grid">
-          <button class="provider" data-calendar="Google Calendar"><span class="provider-icon">G</span><span><b>Google Calendar</b><small>Import an exported .ics file</small></span><span>→</span></button>
+          <button class="provider" data-action="google-calendar"><span class="provider-icon">G</span><span><b>Google Calendar</b><small>Connect and find open windows</small></span><span>→</span></button>
           <button class="provider" data-calendar="Outlook"><span class="provider-icon outlook">O</span><span><b>Outlook</b><small>Import an exported .ics file</small></span><span>→</span></button>
           <button class="provider" data-action="manual-availability"><span class="provider-icon manual">+</span><span><b>Manual availability</b><small>Enter dates and times yourself</small></span><span>→</span></button>
           <input id="calendar-file" type="file" accept=".ics,text/calendar" hidden>
@@ -114,6 +114,6 @@
   </section>
 
   <div class="modal-root" id="modal-root"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="config.js"></script><script src="app.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async></script><script src="config.js"></script><script src="app.js"></script>
 </body>
 </html>

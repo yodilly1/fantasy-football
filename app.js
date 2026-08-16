@@ -393,6 +393,66 @@
     return events;
   }
 
+  function requestGoogleAccessToken() {
+    if (!config.googleClientId) throw new Error('Google Calendar is not configured yet.');
+    const oauth2 = window.google?.accounts?.oauth2;
+    if (!oauth2) throw new Error('Google Calendar is still loading. Wait a moment and try again.');
+    return new Promise((resolve, reject) => {
+      const client = oauth2.initTokenClient({
+        client_id: config.googleClientId,
+        scope: 'https://www.googleapis.com/auth/calendar.freebusy',
+        callback: (response) => response.error ? reject(new Error(response.error_description || 'Google authorization was not completed.')) : resolve(response.access_token),
+        error_callback: (reason) => reject(new Error(reason?.type === 'popup_closed' ? 'Google connection was cancelled.' : 'Google could not open the calendar connection.')),
+      });
+      client.requestAccessToken({prompt: 'consent'});
+    });
+  }
+
+  async function googleBusyEvents({first, last, startTime, endTime, zone}) {
+    const accessToken = await requestGoogleAccessToken();
+    const timeMin = zonedDateToUtc(first, startTime, zone);
+    const timeMax = zonedDateToUtc(last, endTime, zone);
+    const response = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+      method: 'POST',
+      headers: {'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json'},
+      body: JSON.stringify({timeMin, timeMax, timeZone: zone, items: [{id: 'primary'}]}),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body?.error?.message || 'Google Calendar could not return availability.');
+    return (body.calendars?.primary?.busy || []).map((event) => ({start: new Date(event.start), end: new Date(event.end)}));
+  }
+
+  function calendarRows({events, first, last, startTime, endTime, zone, source}) {
+    const date = (value) => value.toISOString().slice(0, 10); const rows = [];
+    for (let day = new Date(`${first}T12:00:00`); day <= new Date(`${last}T12:00:00`) && rows.length < 100; day.setDate(day.getDate() + 1)) {
+      const dayString = date(day), windowStart = new Date(zonedDateToUtc(dayString, startTime, zone)), windowEnd = new Date(zonedDateToUtc(dayString, endTime, zone));
+      if (windowEnd <= windowStart) continue;
+      const busy = events.filter((event) => event.end > windowStart && event.start < windowEnd).sort((a, b) => a.start - b.start);
+      let cursor = windowStart;
+      for (const event of busy) {
+        const gapEnd = event.start < windowEnd ? event.start : windowEnd;
+        if (gapEnd - cursor >= 7200000) rows.push({season_id: app.seasonId, manager_id: app.managerId, starts_at: cursor.toISOString(), ends_at: gapEnd.toISOString(), source, availability: 'open'});
+        if (event.end > cursor) cursor = event.end; if (cursor >= windowEnd) break;
+      }
+      if (windowEnd - cursor >= 7200000) rows.push({season_id: app.seasonId, manager_id: app.managerId, starts_at: cursor.toISOString(), ends_at: windowEnd.toISOString(), source, availability: 'open'});
+    }
+    return rows;
+  }
+
+  function calendarWindowModal({provider, loadEvents}) {
+    const from = new Date(); const to = new Date(from.getTime() + 21 * 86400000); const date = (value) => value.toISOString().slice(0, 10); const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    openModal({title: `Connect ${provider}`, copy: 'Choose the date range and hours you would normally be willing to draft. We read busy times only and save the open gaps. Existing Google imports are replaced when you sync again.', submitLabel: `Connect ${provider}`, body: `<div class="form-grid"><div class="field"><label>First date</label><input id="calendar-from" type="date" value="${date(from)}"></div><div class="field"><label>Last date</label><input id="calendar-to" type="date" value="${date(to)}"></div><div class="field"><label>Daily start</label><input id="calendar-start" type="time" value="18:00"></div><div class="field"><label>Daily end</label><input id="calendar-end" type="time" value="23:00"></div><div class="field full"><label>Timezone</label><select id="calendar-zone"><option ${localZone === 'America/New_York' ? 'selected' : ''}>America/New_York</option><option ${localZone === 'Asia/Jerusalem' ? 'selected' : ''}>Asia/Jerusalem</option><option ${localZone === 'America/Los_Angeles' ? 'selected' : ''}>America/Los_Angeles</option></select></div></div>`, onSubmit: async (modal) => {
+      const options = {first: $('#calendar-from', modal).value, last: $('#calendar-to', modal).value, startTime: $('#calendar-start', modal).value, endTime: $('#calendar-end', modal).value, zone: $('#calendar-zone', modal).value};
+      if (!options.first || !options.last || !options.startTime || !options.endTime) throw new Error('Complete the date range and daily hours.');
+      if (new Date(options.last) < new Date(options.first)) throw new Error('The last date must be after the first date.');
+      const events = await loadEvents(options); const rows = calendarRows({...options, events, source: 'google_freebusy'});
+      if (!rows.length) throw new Error('No two-hour open windows were found in that range.');
+      await api(`availability_blocks?season_id=eq.${app.seasonId}&manager_id=eq.${app.managerId}&source=eq.google_freebusy`, {method: 'DELETE'});
+      await api('availability_blocks', {method: 'POST', headers: {Prefer: 'return=minimal'}, body: JSON.stringify(rows)});
+      await refreshData(); toast(`${rows.length} Google Calendar openings saved.`); return true;
+    }});
+  }
+
   function calendarImportModal(provider, events) {
     const from = new Date(); const to = new Date(from.getTime() + 21 * 86400000); const date = (value) => value.toISOString().slice(0, 10); const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     openModal({title: `Import ${provider}`, copy: `${events.length} busy event${events.length === 1 ? '' : 's'} found. Choose the draft-date range and the hours you would normally be willing to draft. League HQ saves the open gaps.`, submitLabel: 'Import open times', body: `<div class="form-grid"><div class="field"><label>First date</label><input id="calendar-from" type="date" value="${date(from)}"></div><div class="field"><label>Last date</label><input id="calendar-to" type="date" value="${date(to)}"></div><div class="field"><label>Daily start</label><input id="calendar-start" type="time" value="18:00"></div><div class="field"><label>Daily end</label><input id="calendar-end" type="time" value="23:00"></div><div class="field full"><label>Timezone</label><select id="calendar-zone"><option ${localZone === 'America/New_York' ? 'selected' : ''}>America/New_York</option><option ${localZone === 'Asia/Jerusalem' ? 'selected' : ''}>Asia/Jerusalem</option><option ${localZone === 'America/Los_Angeles' ? 'selected' : ''}>America/Los_Angeles</option></select></div></div>`, onSubmit: async (modal) => {
@@ -667,6 +727,7 @@
     const calendar = event.target.closest('[data-calendar]'); if (calendar) { app.calendarProvider = calendar.dataset.calendar; $('#calendar-file').click(); return; }
     const action = event.target.closest('[data-action]')?.dataset.action;
     if (action === 'manual-availability') manualAvailabilityModal();
+    if (action === 'google-calendar') calendarWindowModal({provider: 'Google Calendar', loadEvents: googleBusyEvents});
     if (action === 'new-proposal') proposalModal();
     if (action === 'record-payment') recordPaymentModal();
     if (action === 'open-obligations') openObligationsModal();

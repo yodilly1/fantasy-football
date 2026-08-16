@@ -2,5 +2,6 @@
 // Never put the Supabase service-role key in this file.
 window.UWC_SUPABASE = {
   url: 'https://uiyxlvwkuhidylbenjzc.supabase.co',
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpeXhsdndrdWhpZHlsYmVuanpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MDAxOTcsImV4cCI6MjEwMjQ3NjE5N30.UdZveMIiZTfH_oRYiBmgFE1PF1mI2d1MTJkAEC2zKyk'
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpeXhsdndrdWhpZHlsYmVuanpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5MDAxOTcsImV4cCI6MjEwMjQ3NjE5N30.UdZveMIiZTfH_oRYiBmgFE1PF1mI2d1MTJkAEC2zKyk',
+  googleClientId: '932915993157-d8amks9pfl8ieb8grh18a5skmutbsqe8.apps.googleusercontent.com'
 };

@@ -6,7 +6,7 @@ A dependency-free league web app for the 12-team Sleeper keeper-auction league.
 
 - Email-only league entry with one locked team assignment per account.
 - Commissioner dashboard showing connected and missing managers.
-- Draft availability from manual windows or Google/Outlook `.ics` exports.
+- Draft availability from direct Google Calendar free/busy access, Outlook `.ics` import, or manual windows.
 - Two-hour draft-window ranking in Eastern and Israel time.
 - Sleeper-powered keeper calculator using 2024–2026 drafts, rosters, and transactions.
 - Maximum two keepers, two-year player clock, and trade clock resets.
@@ -38,16 +38,17 @@ A dependency-free league web app for the 12-team Sleeper keeper-auction league.
 - Frontend and hosting: Cloudflare Workers static assets (free tier).
 - Database and lightweight authentication: Supabase (free tier).
 - League history: Sleeper's public API, imported to `data/league-history.json`.
-- Google/Outlook availability: local calendar-file import, so no OAuth project or paid API is required.
+- Google availability: Google Identity Services with the narrow `calendar.freebusy` scope; no event names or refresh tokens are stored.
+- Outlook availability: local `.ics` import, with a direct Microsoft connection available as a future enhancement.
 
-The only accounts needed are the existing GitHub, Supabase, and Cloudflare accounts. Direct one-click calendar OAuth can be added later, but it would require free Google Cloud and Microsoft Entra app registrations.
+Google Calendar uses the free `UWC League HQ` Google Cloud project. Standard league-scale usage remains within the free API tier.
 
 ## Files
 
 - `index.html` — semantic application shell.
 - `styles.css` — responsive interface system.
 - `app.js` — onboarding, scheduling, keepers, voting, money, and history workflows.
-- `config.js` — public Supabase URL and anon key only.
+- `config.js` — public Supabase configuration and Google OAuth Client ID; no private credentials.
 - `data/league-history.json` — imported Sleeper history.
 - `supabase/migrations/` — schema, policies, and server-validated workflows.
 - `scripts/sleeper_import.py` — Sleeper history refresh.
