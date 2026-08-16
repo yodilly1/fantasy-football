@@ -21,7 +21,7 @@ Single-site league command center for the 12-team keeper auction league.
 
 ## Current status
 
-The app is a dependency-free browser client in `index.html`. It supports a useful local setup mode immediately: draft availability blocks, proposal drafts, votes, keeper choices, and NIS/USD payment drafts persist in the browser. Availability is normalized to UTC for cross-time-zone matching. The public Supabase anon key is configured, and authenticated shared mode supports availability, proposals, votes, obligations, payments, and atomic keeper selection/budget updates after migrations `0006`–`0008` are applied.
+The app is a dependency-free browser client in `index.html`. It supports a useful local setup mode immediately: draft availability blocks, proposal drafts, votes, keeper choices, and NIS/USD payment drafts persist in the browser. Availability is normalized to UTC for cross-time-zone matching. The public Supabase anon key is configured, and authenticated shared mode supports availability, proposals, votes, obligations, payments, atomic keeper selection/budget updates, and commissioner-triggered rollover import after migrations `0006`–`0009` are applied.
 
 `config.js` must contain only the public anon key. Never put the Supabase service-role key in a browser-deployed file.
 
@@ -40,6 +40,6 @@ Google Cloud is only needed when Google Calendar free/busy OAuth is activated.
 ## Human setup needed before shared launch
 
 1. Add the Supabase public anon key to `config.js`.
-2. Apply migrations `0006_authenticated_workflows.sql`, `0007_seed_2026_league_and_invites.sql`, and `0008_atomic_keeper_selection.sql` in the Supabase SQL editor.
+2. Apply migrations `0006_authenticated_workflows.sql`, `0007_seed_2026_league_and_invites.sql`, `0008_atomic_keeper_selection.sql`, and `0009_rollover_snapshot_import.sql` in the Supabase SQL editor.
 3. Configure Supabase Auth email provider / redirect URL for the Cloudflare deployment.
 4. Sign in as the commissioner, open the Money ledger or dashboard invite action, and copy each unredeemed manager token privately to the matching manager.
