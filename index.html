@@ -54,7 +54,7 @@
   <script>
     const toast=document.getElementById('toast'); const show=(msg)=>{toast.textContent=msg;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2400)};
     const storeKey='uwc-2026-league-state'; const saved=JSON.parse(localStorage.getItem(storeKey)||'{}'); const supa=window.UWC_SUPABASE||{}; const sessionKey='uwc-supabase-session';
-    const state={blocks:saved.blocks||[],proposals:saved.proposals||[],payments:saved.payments||[],keepers:saved.keepers||[]}; const persist=()=>localStorage.setItem(storeKey,JSON.stringify(state));
+    const state={blocks:saved.blocks||[],proposals:saved.proposals||[],payments:saved.payments||[],keepers:saved.keepers||[]}; const persist=()=>{localStorage.setItem(storeKey,JSON.stringify(state));if(typeof renderLocal==='function')renderLocal()};
     const remote={seasonId:null,managerId:null,teamId:null,ready:false};
     function applyLeagueCopy(){
       document.querySelector('.eyebrow').textContent='2026 setup · Ugh Who Cares';
