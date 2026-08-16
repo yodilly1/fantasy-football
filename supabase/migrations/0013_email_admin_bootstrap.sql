@@ -56,3 +56,35 @@ $$;
 revoke all on public.league_admins from anon, authenticated;
 revoke all on function public.bootstrap_commissioner() from anon;
 grant execute on function public.bootstrap_commissioner() to authenticated;
+
+-- Friendly post-sign-in team selection for managers who do not use a private
+-- invite link. A claimed manager/team cannot be overwritten by another account.
+create or replace function public.claim_manager_for_team(target_team uuid)
+returns public.managers
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_season uuid;
+  claimed public.managers;
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  select id into target_season from public.seasons where year = 2026;
+  select m.* into claimed
+  from public.team_memberships tm
+  join public.managers m on m.id = tm.manager_id
+  where tm.season_id = target_season
+    and tm.team_id = target_team
+    and m.auth_user_id is null;
+  if claimed.id is null then raise exception 'That team is already claimed'; end if;
+  update public.managers set auth_user_id = auth.uid()
+   where id = claimed.id and auth_user_id is null
+   returning * into claimed;
+  if claimed.id is null then raise exception 'That team is already claimed'; end if;
+  return claimed;
+end;
+$$;
+
+revoke execute on function public.claim_manager_for_team(uuid) from anon;
+grant execute on function public.claim_manager_for_team(uuid) to authenticated;
