@@ -40,6 +40,6 @@ Google Cloud is only needed when Google Calendar free/busy OAuth is activated.
 ## Human setup needed before shared launch
 
 1. Add the Supabase public anon key to `config.js`.
-2. Apply migrations `0006_authenticated_workflows.sql`, `0007_seed_2026_league_and_invites.sql`, `0008_atomic_keeper_selection.sql`, `0009_rollover_snapshot_import.sql`, and `0010_build_auction_pool.sql` in the Supabase SQL editor.
+2. Apply migrations `0006_authenticated_workflows.sql`, `0007_seed_2026_league_and_invites.sql`, `0008_atomic_keeper_selection.sql`, `0009_rollover_snapshot_import.sql`, `0010_build_auction_pool.sql`, and `0011_workbook_rule_reconciliation.sql` in the Supabase SQL editor.
 3. Configure Supabase Auth email provider / redirect URL for the Cloudflare deployment.
 4. Sign in as the commissioner, open the Money ledger or dashboard invite action, and copy each unredeemed manager token privately to the matching manager.
