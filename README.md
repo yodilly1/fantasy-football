@@ -46,7 +46,7 @@ Live app: https://ugh-who-cares.pages.dev/
 - Frontend and hosting: Cloudflare Pages static assets (free tier).
 - Database and lightweight authentication: Supabase (free tier).
 - League history: Sleeper's public API, imported to `data/league-history.json` from 2020 onward.
-- Google availability: Google Identity Services with the narrow `calendar.freebusy` scope; no event names or refresh tokens are stored.
+- Google availability: Google Identity Services with the narrow `calendar.freebusy` scope; no event names or refresh tokens are stored. Because this is a private league tool, Google may display an unverified-app warning during connection; users should confirm they trust the league app before continuing.
 - Vote email delivery: Supabase Edge Functions plus Brevo's free transactional-email tier.
 - Outlook availability: local `.ics` import, with a direct Microsoft connection available as a future enhancement.
 

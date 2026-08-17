@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f7f8fa">
   <title>Ugh Who Cares · League HQ</title>
-  <link rel="stylesheet" href="styles.css?v=release-15">
+  <link rel="stylesheet" href="styles.css?v=release-16">
 </head>
 <body>
   <div class="app-shell" id="app-shell" hidden>
@@ -52,7 +52,7 @@
       <section class="view" id="view-draft" hidden>
         <div class="section-intro"><div><span class="kicker">Draft coordination</span><h2>Find one time that works.</h2><p>Connect Google Calendar, import Outlook, or add open times across multiple days manually. We store availability—not event names—and rank many realistic two-hour windows for both Eastern and Israel time.</p></div><button class="button primary" data-action="manual-availability">Add availability</button></div>
         <div class="provider-grid">
-          <button class="provider" data-action="google-calendar"><span class="provider-icon">G</span><span><b>Google Calendar</b><small>Connect and find open windows</small></span><span>→</span></button>
+          <button class="provider" data-action="google-calendar"><span class="provider-icon">G</span><span><b>Google Calendar</b><small>Reads busy/free time only · Google may show an unverified-app warning</small></span><span>→</span></button>
           <button class="provider" data-calendar="Outlook"><span class="provider-icon outlook">O</span><span><b>Outlook</b><small>Import an exported .ics file</small></span><span>→</span></button>
           <button class="provider" data-action="manual-availability"><span class="provider-icon manual">+</span><span><b>Manual availability</b><small>Enter dates and times yourself</small></span><span>→</span></button>
           <input id="calendar-file" type="file" accept=".ics,text/calendar" hidden>
@@ -123,6 +123,6 @@
   </section>
 
   <div class="modal-root" id="modal-root"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="https://accounts.google.com/gsi/client" async></script><script src="league-settings.js?v=release-15"></script><script src="league-app.js?v=release-15"></script>
+  <script src="https://accounts.google.com/gsi/client" async></script><script src="league-settings.js?v=release-16"></script><script src="league-app.js?v=release-16"></script>
 </body>
 </html>
