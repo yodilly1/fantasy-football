@@ -215,11 +215,19 @@
     app.teamBudget = app.allTeamBudgets.find((row) => row.team_id === app.teamId) || null;
     app.ownership = app.teamId ? await api(`player_ownership_history?season_id=eq.${app.seasonId}&team_id=eq.${app.teamId}&select=*,players(id,name,position,nfl_team)`) : [];
 
-    if (app.keeperSelections.length) {
+    const keepersLocked = app.teamBudget?.status === 'keepers_locked';
+    if (app.keeperSelections.length || keepersLocked) {
+      // A locked decision must always come from Supabase. Never resurrect a stale
+      // browser draft from localStorage after the commissioner has locked it.
       app.selectedKeepers = app.keeperSelections.map((row) => ({
-        id: row.players?.id, name: row.players?.name, position: row.players?.position,
-        lastCost: Number(row.base_cost_usd) - 5, baseCost: Number(row.base_cost_usd), finalCost: Number(row.final_cost_usd),
-        yearsUsed: Math.max(0, Number(row.keeper_year_number) - 1), remote: true,
+        id: row.player_id || row.players?.id,
+        name: row.players?.name || 'Selected keeper',
+        position: row.players?.position,
+        lastCost: Number(row.last_cost_usd ?? row.base_cost_usd ?? 0),
+        baseCost: Number(row.base_cost_usd ?? 0),
+        finalCost: Number(row.final_cost_usd ?? 0),
+        yearsUsed: Math.max(0, Number(row.keeper_year_number || 1) - 1),
+        remote: true,
       }));
       localStorage.setItem(keeperStorageKey(), JSON.stringify(app.selectedKeepers));
     } else app.selectedKeepers = readJson(keeperStorageKey()) || [];
@@ -592,17 +600,25 @@
 
   function renderKeepers() {
     const search = ($('#roster-search')?.value || '').trim().toLowerCase();
-    const selectedIds = new Set(app.selectedKeepers.map((player) => String(player.id)));
+    const locked = app.teamBudget?.status === 'keepers_locked';
+    const displayedKeepers = locked
+      ? app.keeperSelections.map((row) => ({
+        id: row.player_id || row.players?.id,
+        name: row.players?.name || 'Selected keeper',
+        finalCost: Number(row.final_cost_usd ?? 0),
+      }))
+      : app.selectedKeepers;
+    const selectedIds = new Set(displayedKeepers.map((player) => String(player.id)));
     const roster = app.roster.filter((player) => !search || player.name.toLowerCase().includes(search) || String(player.position).toLowerCase().includes(search));
     $('#keeper-roster-body').innerHTML = roster.length ? roster.map((player) => {
       const selected = selectedIds.has(String(player.id));
       const source = player.acquisition === 'free_agent' ? 'Waiver / free agent' : player.acquisition === 'trade' ? 'Trade · clock reset' : player.acquisition === 'keeper' ? '2025 keeper' : '2025 auction';
       const costNote = player.potential > player.final ? `Standard $${player.final}; ADP exception could be $${player.potential}` : player.acquisition === 'free_agent' ? 'Flat waiver price' : '$5 tax and position floor applied';
-      const locked = app.teamBudget?.status === 'keepers_locked';
       return `<tr class="${selected ? 'is-selected' : ''}"><td><div class="player"><b>${escapeHtml(player.name)}</b><small>${escapeHtml(player.position || '—')} · ${escapeHtml(player.team || 'FA')}</small></div></td><td><b>${source}</b></td><td class="money">${player.acquisition === 'free_agent' ? '—' : `$${player.lastCost}`}</td><td><span class="eligibility ${player.eligible ? '' : 'blocked'}">${player.eligible ? `${player.yearsUsed} of 2 used` : 'Two-year limit reached'}</span></td><td><span class="money">$${player.final}</span><div class="rule-note">${costNote}</div></td><td><button class="button ${selected ? 'secondary' : 'primary'}" data-keeper-player="${player.id}" ${locked || (!player.eligible && !selected) ? 'disabled' : ''}>${selected ? 'Remove' : 'Select'}</button></td></tr>`;
     }).join('') : '<tr><td colspan="6"><div class="empty-state">No players match that search.</div></td></tr>';
-    const spend = app.selectedKeepers.reduce((total, player) => total + Number(player.finalCost ?? player.final ?? 0), 0);
-    $('#keeper-budget').innerHTML = `<div><span>Selected</span><strong>${app.selectedKeepers.length} / 2</strong></div><div><span>Keeper spend</span><strong>$${spend}</strong></div><div><span>Auction budget left</span><strong>$${200 - spend}</strong></div>`;
+    const spend = displayedKeepers.reduce((total, player) => total + Number(player.finalCost ?? player.final ?? 0), 0);
+    const lockNote = locked && displayedKeepers.length < 2 ? '<small class="rule-note">Locked with one keeper. Ask the commissioner to reopen it if you intended to add a second keeper.</small>' : '';
+    $('#keeper-budget').innerHTML = `<div><span>Selected</span><strong>${displayedKeepers.length} / 2</strong></div><div><span>Keeper spend</span><strong>$${spend}</strong></div><div><span>Auction budget left</span><strong>$${200 - spend}</strong></div>${lockNote}`;
     const lockButton = $('#keeper-lock-button');
     if (lockButton) { const locked = app.teamBudget?.status === 'keepers_locked'; lockButton.textContent = locked ? 'Keepers locked ✓' : 'Lock keeper choices'; lockButton.disabled = locked; }
   }
