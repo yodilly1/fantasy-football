@@ -16,7 +16,7 @@ Live app: https://ugh-who-cares.pages.dev/
 - Maximum two keepers, two-year player clock, and trade clock resets.
 - Final keeper submission lock, with commissioner-only reopening.
 - $200 auction budget with the workbook's keeper taxes, positional floors, waiver price, and ADP-exception range.
-- Rule proposals and one vote per manager.
+- Rule and side-bet proposals, one vote per manager, and majority-based decisions before the season kickoff.
 - Automatic email alerts to every connected manager when a proposal opens.
 - NIS obligations with either NIS or USD settlement and a recorded exchange rate.
 - Sleeper record book from 2020 onward and 2026 rollover team directory.
