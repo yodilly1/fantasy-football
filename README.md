@@ -12,14 +12,14 @@ Live app: https://ugh-who-cares.pages.dev/
 - Multi-day manual availability and up to 24 two-hour draft-window suggestions weighted for Eastern and Israel-friendly hours.
 - Manager identity and replacement workflow separate from immutable Sleeper history.
 - In-app user guide for onboarding, scheduling, keepers, money, voting, and Sleeper data.
-- Sleeper-powered keeper calculator using 2024–2026 drafts, rosters, and transactions.
+- Sleeper-powered keeper calculator using 2020–2026 drafts, rosters, and transactions.
 - Maximum two keepers, two-year player clock, and trade clock resets.
 - Final keeper submission lock, with commissioner-only reopening.
 - $200 auction budget with the workbook's keeper taxes, positional floors, waiver price, and ADP-exception range.
 - Rule proposals and one vote per manager.
 - Automatic email alerts to every connected manager when a proposal opens.
 - NIS obligations with either NIS or USD settlement and a recorded exchange rate.
-- Sleeper record book and 2026 rollover team directory.
+- Sleeper record book from 2020 onward and 2026 rollover team directory.
 - Durable Supabase snapshots of imported Sleeper season data; the API remains read-only.
 
 ## Currency model
@@ -45,7 +45,7 @@ Live app: https://ugh-who-cares.pages.dev/
 
 - Frontend and hosting: Cloudflare Pages static assets (free tier).
 - Database and lightweight authentication: Supabase (free tier).
-- League history: Sleeper's public API, imported to `data/league-history.json`.
+- League history: Sleeper's public API, imported to `data/league-history.json` from 2020 onward.
 - Google availability: Google Identity Services with the narrow `calendar.freebusy` scope; no event names or refresh tokens are stored.
 - Vote email delivery: Supabase Edge Functions plus Brevo's free transactional-email tier.
 - Outlook availability: local `.ics` import, with a direct Microsoft connection available as a future enhancement.

@@ -4,15 +4,14 @@ import fs from 'node:fs/promises';
 const history = JSON.parse(await fs.readFile(new URL('../data/league-history.json', import.meta.url), 'utf8'));
 const seasons = new Map(history.seasons.map((season) => [Number(season.year), season]));
 
-assert.deepEqual([...seasons.keys()].sort(), [2024, 2025, 2026], 'Expected the 2024–2026 Sleeper chain');
-for (const year of [2024, 2025, 2026]) {
+assert.deepEqual([...seasons.keys()].sort(), [2020, 2021, 2022, 2023, 2024, 2025, 2026], 'Expected the 2020–2026 Sleeper chain');
+for (const year of [2020, 2021, 2022, 2023, 2024, 2025, 2026]) {
   const season = seasons.get(year);
   assert.equal(season.teams.length, 12, `${year} must contain 12 teams`);
   assert.equal(new Set(season.teams.map((team) => String(team.roster_id))).size, 12, `${year} roster IDs must be unique`);
 }
 
-assert.equal(seasons.get(2024).draft_picks.length, 180, '2024 auction must contain 180 picks');
-assert.equal(seasons.get(2025).draft_picks.length, 180, '2025 auction must contain 180 picks');
+for (const year of [2020, 2021, 2022, 2023, 2024, 2025]) assert.equal(seasons.get(year).draft_picks.length, 180, `${year} auction must contain 180 picks`);
 assert.equal(seasons.get(2026).settings.max_keepers, 2, 'Sleeper keeper limit must be two');
 assert.equal(seasons.get(2026).drafts[0].settings.budget, 200, 'Auction budget must be $200');
 assert.equal(Number(seasons.get(2026).scoring_settings.rec), 0.5, 'League must remain half-PPR');
@@ -53,4 +52,3 @@ console.log(JSON.stringify({
   twoYearLocks,
   result: 'release data validated',
 }, null, 2));
-

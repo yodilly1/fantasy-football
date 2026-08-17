@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f7f8fa">
   <title>Ugh Who Cares · League HQ</title>
-  <link rel="stylesheet" href="styles.css?v=release-5">
+  <link rel="stylesheet" href="styles.css?v=release-6">
 </head>
 <body>
   <div class="app-shell" id="app-shell" hidden>
@@ -90,9 +90,10 @@
       </section>
 
       <section class="view" id="view-history" hidden>
-        <div class="section-intro"><div><span class="kicker">Sleeper record book</span><h2>Three seasons, one league.</h2><p>Standings, champions, draft prices, weekly scores, and transactions from imported Sleeper history. Snapshots are also stored in the league database for durable reference.</p></div></div>
+        <div class="section-intro"><div><span class="kicker">Sleeper record book</span><h2>Seven seasons, one league.</h2><p>Standings, champions, draft prices, weekly scores, and transactions from 2020–2026 Sleeper history. Snapshots are also stored in the league database for durable reference.</p></div></div>
         <div class="metric-grid" id="history-metrics"></div>
-        <article class="panel"><div class="panel-head"><div><h3>Season history</h3><p>2024–2026</p></div></div><div class="rows" id="season-history"></div></article>
+        <article class="panel"><div class="panel-head"><div><h3>Season history</h3><p>2020–2026</p></div><select id="history-season" class="history-select" aria-label="Choose a season"></select></div><div class="rows" id="season-history"></div></article>
+        <article class="panel history-explorer" id="history-explorer"></article>
       </section>
 
       <section class="view" id="view-teams" hidden>
@@ -121,6 +122,6 @@
   </section>
 
   <div class="modal-root" id="modal-root"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="https://accounts.google.com/gsi/client" async></script><script src="league-settings.js?v=release-5"></script><script src="league-app.js?v=release-5"></script>
+  <script src="https://accounts.google.com/gsi/client" async></script><script src="league-settings.js?v=release-6"></script><script src="league-app.js?v=release-6"></script>
 </body>
 </html>
