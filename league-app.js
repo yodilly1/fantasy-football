@@ -647,6 +647,10 @@
 
   async function toggleKeeper(playerId) {
     const player = app.roster.find((entry) => String(entry.id) === String(playerId)); if (!player) return;
+    // Remove orphaned entries left by an older/reset browser draft before
+    // enforcing the two-keeper limit. These entries cannot be rendered or
+    // removed from the roster table, but would otherwise consume a slot.
+    app.selectedKeepers = app.selectedKeepers.filter((keeper) => app.roster.some((entry) => String(entry.id) === String(keeper.id)));
     const index = app.selectedKeepers.findIndex((entry) => String(entry.id) === String(playerId));
     if (index >= 0) app.selectedKeepers.splice(index, 1);
     else {
