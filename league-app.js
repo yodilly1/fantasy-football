@@ -388,12 +388,29 @@
         const endKey = new Date(time + 7200000).toISOString();
         const israelComfort = comfort(hourInZone(key, 'Asia/Jerusalem'), 'Asia/Jerusalem');
         const easternComfort = comfort(hourInZone(key, 'America/New_York'), 'America/New_York');
-        candidates.set(key, {start: key, end: endKey, open, possible, count: managerStatus.size, israelComfort, easternComfort, score: open * 100 + possible * 25 + israelComfort + easternComfort});
+        // Keep overlap important, but make a genuinely usable Israel/U.S. time
+        // beat a marginal overlap advantage at 1–3 a.m. in Israel.
+        candidates.set(key, {start: key, end: endKey, open, possible, count: managerStatus.size, israelComfort, easternComfort, score: open * 100 + possible * 25 + israelComfort * 4 + easternComfort * 2});
       }
     }
     const all = [...candidates.values()];
     const practical = all.filter((candidate) => candidate.israelComfort >= 14 && candidate.easternComfort >= 14);
-    return (practical.length ? practical : all).sort((a, b) => b.score - a.score || new Date(a.start) - new Date(b.start)).slice(0, 24);
+    const IsraelFriendly = practical.filter((candidate) => candidate.israelComfort >= 24 && candidate.easternComfort >= 14);
+    const pool = (IsraelFriendly.length >= 6 ? IsraelFriendly : practical.length ? practical : all)
+      // For the 2026 draft, keep the recommendation list inside the requested
+      // Aug 30–Sep 8 planning horizon. Availability outside it remains saved.
+      .filter((candidate) => new Date(candidate.start).getTime() < Date.parse('2026-09-09T00:00:00Z'))
+      .sort((a, b) => b.score - a.score || new Date(a.start) - new Date(b.start));
+    const dayKey = (candidate) => new Intl.DateTimeFormat('en-CA', {timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'}).format(new Date(candidate.start));
+    const isWeekend = (candidate) => [0, 6].includes(new Date(`${dayKey(candidate)}T12:00:00Z`).getUTCDay());
+    const byDay = new Map();
+    pool.forEach((candidate) => { const key = dayKey(candidate); if (!byDay.has(key)) byDay.set(key, []); byDay.get(key).push(candidate); });
+    const dayLeaders = [...byDay.values()].map((rows) => rows[0]).sort((a, b) => b.score - a.score);
+    const weekendDays = dayLeaders.filter(isWeekend).slice(0, 2);
+    const weekdayDays = dayLeaders.filter((candidate) => !isWeekend(candidate)).slice(0, 6);
+    const selectedDays = [...new Map([...weekendDays, ...weekdayDays, ...dayLeaders].map((candidate) => [dayKey(candidate), candidate])).values()].slice(0, 8);
+    const selectedDayKeys = new Set(selectedDays.map(dayKey));
+    return pool.filter((candidate) => selectedDayKeys.has(dayKey(candidate))).slice(0, 16);
   }
 
   function renderDraft() {
