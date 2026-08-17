@@ -396,7 +396,7 @@
     const all = [...candidates.values()];
     const practical = all.filter((candidate) => candidate.israelComfort >= 14 && candidate.easternComfort >= 14);
     const IsraelFriendly = practical.filter((candidate) => candidate.israelComfort >= 24 && candidate.easternComfort >= 14);
-    const pool = (IsraelFriendly.length >= 6 ? IsraelFriendly : practical.length ? practical : all)
+    const pool = (IsraelFriendly.length >= 6 ? IsraelFriendly : practical.length ? practical : [])
       // For the 2026 draft, keep the recommendation list inside the requested
       // Aug 30–Sep 8 planning horizon. Availability outside it remains saved.
       .filter((candidate) => new Date(candidate.start).getTime() < Date.parse('2026-09-09T00:00:00Z'))
@@ -419,7 +419,7 @@
     const managers = new Set(app.blocks.map((block) => block.manager_id)).size;
     $('#availability-progress').textContent = `${managers} / 12`;
     const windows = rankedWindows();
-    $('#draft-window-list').innerHTML = windows.length ? windows.map((window, index) => `<div class="data-row"><div><b>${formatInZone(window.start, 'America/New_York')} Eastern</b><small>${formatInZone(window.start, 'Asia/Jerusalem')} Israel · ${window.open} open${window.possible ? ` · ${window.possible} possible` : ''} · ${window.israelComfort >= 24 ? 'Israel-friendly' : window.israelComfort >= 14 ? 'reasonable in Israel' : 'fallback window'}</small></div><div class="row-actions"><span class="status ${window.count >= 10 ? 'success' : 'warning'}">${window.count} / 12</span>${app.isCommissioner ? `<button class="button secondary" data-select-draft="${index}">Select</button>` : ''}</div></div>`).join('') : '<div class="empty-state">Add open times to rank two-hour windows.</div>';
+    $('#draft-window-list').innerHTML = windows.length ? windows.map((window, index) => `<div class="data-row"><div><b>${formatInZone(window.start, 'America/New_York')} Eastern</b><small>${formatInZone(window.start, 'Asia/Jerusalem')} Israel · ${window.open} open${window.possible ? ` · ${window.possible} possible` : ''} · ${window.israelComfort >= 24 ? 'Israel-friendly' : 'reasonable in Israel'}</small></div><div class="row-actions"><span class="status ${window.count >= 10 ? 'success' : 'warning'}">${window.count} / 12</span>${app.isCommissioner ? `<button class="button secondary" data-select-draft="${index}">Select</button>` : ''}</div></div>`).join('') : '<div class="empty-state">No reasonable Israel / U.S. overlap yet. Once more managers add availability, we’ll show a spread of weekday and weekend options through September 8.</div>';
     const confirmed = app.draftOptions.find((option) => option.selected);
     const card = $('#confirmed-draft');
     card.hidden = !confirmed;
