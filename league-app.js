@@ -230,6 +230,11 @@
         remote: true,
       }));
       localStorage.setItem(keeperStorageKey(), JSON.stringify(app.selectedKeepers));
+    } else if (app.teamBudget?.status === 'rollforward_pending') {
+      // A commissioner reset is authoritative. Clear any pre-reset draft kept
+      // in this browser so an empty database state cannot display old keepers.
+      app.selectedKeepers = [];
+      localStorage.removeItem(keeperStorageKey());
     } else app.selectedKeepers = readJson(keeperStorageKey()) || [];
     return true;
   }
