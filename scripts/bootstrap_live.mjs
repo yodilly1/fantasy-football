@@ -72,6 +72,20 @@ const result = await rest('rpc/import_rollover_snapshot', {
   body: JSON.stringify({target_season: season.id, snapshot}),
 });
 
+const capturedAt = new Date().toISOString();
+const snapshotRows = history.seasons.map((entry) => ({
+  season_year: entry.year,
+  sleeper_league_id: String(entry.league_id),
+  captured_at: capturedAt,
+  source: 'sleeper_api',
+  payload: entry,
+}));
+await rest('league_data_snapshots?on_conflict=season_year,sleeper_league_id', {
+  method: 'POST',
+  headers: {Prefer: 'resolution=merge-duplicates,return=minimal'},
+  body: JSON.stringify(snapshotRows),
+});
+
 const ownership = await rest(`player_ownership_history?season_id=eq.${season.id}&select=id`);
 const players = await rest('players?select=id');
-console.log(JSON.stringify({result, players: players.length, ownership: ownership.length}));
+console.log(JSON.stringify({result, snapshots: snapshotRows.length, players: players.length, ownership: ownership.length}));

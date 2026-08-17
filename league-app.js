@@ -32,6 +32,7 @@
     draftOptions: [],
     ownership: [],
     history: null,
+    dbSnapshots: [],
     roster: [],
     selectedKeepers: [],
     calendarProvider: 'Google Calendar',
@@ -178,7 +179,7 @@
     app.managerId = await api('rpc/current_manager_id', {method: 'POST', body: '{}'});
     if (!app.managerId) return false;
 
-    const [managerRows, memberships, managers, allMemberships, blocks, proposals, votes, keeperSelections, obligations, settlements, draftOptions, teamBudgets] = await Promise.all([
+    const [managerRows, memberships, managers, allMemberships, blocks, proposals, votes, keeperSelections, obligations, settlements, draftOptions, teamBudgets, dbSnapshots] = await Promise.all([
       api(`managers?id=eq.${app.managerId}&select=id,display_name,timezone,preferred_payment_currency`),
       api(`team_memberships?season_id=eq.${app.seasonId}&manager_id=eq.${app.managerId}&select=team_id,is_commissioner,teams(id,display_name,sleeper_team_id)`),
       api('managers?select=id,display_name,auth_user_id,timezone,preferred_payment_currency&order=display_name'),
@@ -191,6 +192,7 @@
       api('settlements?select=*&order=created_at.desc'),
       api(`draft_options?season_id=eq.${app.seasonId}&select=*&order=score.desc`),
       api(`season_team_budgets?season_id=eq.${app.seasonId}&select=*`),
+      api('league_data_snapshots?select=season_year,sleeper_league_id,captured_at&order=season_year.desc').catch(() => []),
     ]);
 
     app.manager = managerRows?.[0] || null;
@@ -208,6 +210,7 @@
     app.settlements = settlements || [];
     app.draftOptions = draftOptions || [];
     app.allTeamBudgets = teamBudgets || [];
+    app.dbSnapshots = dbSnapshots || [];
     app.teamBudget = app.allTeamBudgets.find((row) => row.team_id === app.teamId) || null;
     app.ownership = app.teamId ? await api(`player_ownership_history?season_id=eq.${app.seasonId}&team_id=eq.${app.teamId}&select=*,players(id,name,position,nfl_team)`) : [];
 
@@ -720,7 +723,7 @@
 
   function renderHistory() {
     const seasons = app.history?.seasons || []; const completed = seasons.filter((season) => season.year < 2026); const transactions = seasons.reduce((sum, season) => sum + (season.transactions?.length || 0), 0); const picks = seasons.reduce((sum, season) => sum + (season.draft_picks?.length || 0), 0);
-    $('#history-metrics').innerHTML = [['Seasons imported', seasons.length, '2024–2026'], ['Draft picks', picks, 'Auction history'], ['Transactions', transactions, 'Waivers and trades'], ['2025 champion', completed.length ? championFor(completed.sort((a,b) => b.year-a.year)[0]) : '—', 'Sleeper result']].map(([label, value, note]) => `<article class="metric"><span>${label}</span><strong>${escapeHtml(value)}</strong><small>${note}</small></article>`).join('');
+    $('#history-metrics').innerHTML = [['Seasons imported', seasons.length, `${app.dbSnapshots.length || seasons.length} stored in database`], ['Draft picks', picks, 'Auction history'], ['Transactions', transactions, 'Waivers and trades'], ['2025 champion', completed.length ? championFor(completed.sort((a,b) => b.year-a.year)[0]) : '—', 'Sleeper result']].map(([label, value, note]) => `<article class="metric"><span>${label}</span><strong>${escapeHtml(value)}</strong><small>${note}</small></article>`).join('');
     $('#season-history').innerHTML = seasons.slice().sort((a, b) => b.year - a.year).map((season) => { const top = [...(season.teams || [])].sort((a,b) => Number(b.wins || 0) - Number(a.wins || 0) || Number(b.points || 0) - Number(a.points || 0))[0]; return `<div class="data-row"><div><b>${season.year} · ${championFor(season)}</b><small>${season.year === 2026 ? 'Rollover season in setup' : `${top?.team_name || 'Top team'} · ${top?.wins || 0}–${top?.losses || 0}`} · ${season.transactions?.length || 0} transactions</small></div><span class="status ${season.year < 2026 ? 'success' : 'warning'}">${season.year < 2026 ? 'Complete' : 'Setup'}</span></div>`; }).join('');
   }
 

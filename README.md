@@ -20,6 +20,7 @@ Live app: https://ugh-who-cares.pages.dev/
 - Automatic email alerts to every connected manager when a proposal opens.
 - NIS obligations with either NIS or USD settlement and a recorded exchange rate.
 - Sleeper record book and 2026 rollover team directory.
+- Durable Supabase snapshots of imported Sleeper season data; the API remains read-only.
 
 ## Currency model
 
