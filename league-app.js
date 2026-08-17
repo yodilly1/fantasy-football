@@ -356,16 +356,16 @@
     };
     const comfort = (hour, zone) => {
       if (zone === 'Asia/Jerusalem') {
-        if (hour >= 18 && hour < 24) return 30;
-        if (hour >= 0 && hour < 1.5) return 22;
-        if (hour >= 16 && hour < 18) return 16;
-        if (hour >= 8 && hour < 16) return 8;
-        return -18;
+        if (hour >= 18 && hour < 23.5) return 32;
+        if (hour >= 23.5 && hour < 24) return 24;
+        if (hour >= 0 && hour < 1) return 14;
+        if (hour >= 16 && hour < 18) return 4;
+        return -60;
       }
-      if (hour >= 12 && hour < 21.5) return 24;
-      if (hour >= 9 && hour < 12) return 12;
-      if (hour >= 21.5 && hour < 23) return 2;
-      return -14;
+      if (hour >= 11 && hour < 17) return 28;
+      if (hour >= 9 && hour < 11) return 14;
+      if (hour >= 17 && hour < 19) return 8;
+      return -45;
     };
     for (const block of blocks) {
       const start = new Date(block.utcStart).getTime();
@@ -383,7 +383,9 @@
         candidates.set(key, {start: key, end: endKey, open, possible, count: managerStatus.size, israelComfort, easternComfort, score: open * 100 + possible * 25 + israelComfort + easternComfort});
       }
     }
-    return [...candidates.values()].sort((a, b) => b.score - a.score || new Date(a.start) - new Date(b.start)).slice(0, 24);
+    const all = [...candidates.values()];
+    const practical = all.filter((candidate) => candidate.israelComfort >= 14 && candidate.easternComfort >= 14);
+    return (practical.length ? practical : all).sort((a, b) => b.score - a.score || new Date(a.start) - new Date(b.start)).slice(0, 24);
   }
 
   function renderDraft() {
@@ -392,7 +394,7 @@
     const managers = new Set(app.blocks.map((block) => block.manager_id)).size;
     $('#availability-progress').textContent = `${managers} / 12`;
     const windows = rankedWindows();
-    $('#draft-window-list').innerHTML = windows.length ? windows.map((window, index) => `<div class="data-row"><div><b>${formatInZone(window.start, 'America/New_York')} Eastern</b><small>${formatInZone(window.start, 'Asia/Jerusalem')} Israel · ${window.open} open${window.possible ? ` · ${window.possible} possible` : ''} · ${window.israelComfort >= 22 ? 'Israel-friendly' : window.israelComfort < 0 ? 'late in Israel' : 'reasonable in Israel'}</small></div><div class="row-actions"><span class="status ${window.count >= 10 ? 'success' : 'warning'}">${window.count} / 12</span>${app.isCommissioner ? `<button class="button secondary" data-select-draft="${index}">Select</button>` : ''}</div></div>`).join('') : '<div class="empty-state">Add open times to rank two-hour windows.</div>';
+    $('#draft-window-list').innerHTML = windows.length ? windows.map((window, index) => `<div class="data-row"><div><b>${formatInZone(window.start, 'America/New_York')} Eastern</b><small>${formatInZone(window.start, 'Asia/Jerusalem')} Israel · ${window.open} open${window.possible ? ` · ${window.possible} possible` : ''} · ${window.israelComfort >= 24 ? 'Israel-friendly' : window.israelComfort >= 14 ? 'reasonable in Israel' : 'fallback window'}</small></div><div class="row-actions"><span class="status ${window.count >= 10 ? 'success' : 'warning'}">${window.count} / 12</span>${app.isCommissioner ? `<button class="button secondary" data-select-draft="${index}">Select</button>` : ''}</div></div>`).join('') : '<div class="empty-state">Add open times to rank two-hour windows.</div>';
     const confirmed = app.draftOptions.find((option) => option.selected);
     const card = $('#confirmed-draft');
     card.hidden = !confirmed;
