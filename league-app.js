@@ -188,7 +188,7 @@
       api(`availability_blocks?season_id=eq.${app.seasonId}&select=*,managers(display_name)&order=starts_at`),
       api(`proposals?season_id=eq.${app.seasonId}&select=*&order=created_at.desc`),
       api('votes?select=proposal_id,manager_id,choice,comment'),
-      api(`keeper_selections?season_id=eq.${app.seasonId}&select=*,players(id,name,position,nfl_team)`),
+      api(`keeper_selections?season_id=eq.${app.seasonId}&select=*,players(id,sleeper_player_id,name,position,nfl_team)`),
       api(`league_obligations?season_id=eq.${app.seasonId}&select=*&order=created_at.desc`),
       api('settlements?select=*&order=created_at.desc'),
       api(`draft_options?season_id=eq.${app.seasonId}&select=*&order=score.desc`),
@@ -220,7 +220,9 @@
       // A locked decision must always come from Supabase. Never resurrect a stale
       // browser draft from localStorage after the commissioner has locked it.
       app.selectedKeepers = app.keeperSelections.map((row) => ({
-        id: row.player_id || row.players?.id,
+        // Roster rows use Sleeper IDs; keeper_selections uses our internal UUID.
+        id: row.players?.sleeper_player_id || row.players?.id || row.player_id,
+        dbPlayerId: row.player_id,
         name: row.players?.name || 'Selected keeper',
         position: row.players?.position,
         lastCost: Number(row.last_cost_usd ?? row.base_cost_usd ?? 0),
@@ -625,7 +627,7 @@
     const locked = app.teamBudget?.status === 'keepers_locked';
     const displayedKeepers = locked
       ? app.keeperSelections.map((row) => ({
-        id: row.player_id || row.players?.id,
+        id: row.players?.sleeper_player_id || row.players?.id || row.player_id,
         name: row.players?.name || 'Selected keeper',
         finalCost: Number(row.final_cost_usd ?? 0),
       }))
