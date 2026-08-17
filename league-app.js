@@ -35,6 +35,8 @@
     dbSnapshots: [],
     roster: [],
     selectedKeepers: [],
+    keeperDraftDirty: false,
+    keeperSaving: false,
     calendarProvider: 'Google Calendar',
     activeView: 'dashboard',
     historyYear: 2025,
@@ -232,12 +234,17 @@
         remote: true,
       }));
       localStorage.setItem(keeperStorageKey(), JSON.stringify(app.selectedKeepers));
+      app.keeperDraftDirty = false;
     } else if (app.teamBudget?.status === 'rollforward_pending') {
       // A commissioner reset is authoritative. Clear any pre-reset draft kept
       // in this browser so an empty database state cannot display old keepers.
       app.selectedKeepers = [];
       localStorage.removeItem(keeperStorageKey());
-    } else app.selectedKeepers = readJson(keeperStorageKey()) || [];
+      app.keeperDraftDirty = false;
+    } else {
+      app.selectedKeepers = readJson(keeperStorageKey()) || [];
+      app.keeperDraftDirty = app.selectedKeepers.length > 0;
+    }
     return true;
   }
 
@@ -644,7 +651,9 @@
     const lockNote = locked && displayedKeepers.length < 2 ? '<small class="rule-note">Locked with one keeper. Ask the commissioner to reopen it if you intended to add a second keeper.</small>' : '';
     $('#keeper-budget').innerHTML = `<div><span>Selected</span><strong>${displayedKeepers.length} / 2</strong></div><div><span>Keeper spend</span><strong>$${spend}</strong></div><div><span>Auction budget left</span><strong>$${200 - spend}</strong></div>${lockNote}`;
     const lockButton = $('#keeper-lock-button');
-    if (lockButton) { const locked = app.teamBudget?.status === 'keepers_locked'; lockButton.textContent = locked ? 'Keepers locked ✓' : 'Lock keeper choices'; lockButton.disabled = locked; }
+    if (lockButton) { lockButton.textContent = locked ? 'Keepers locked ✓' : 'Lock keeper choices'; lockButton.disabled = locked || app.keeperSaving; }
+    const saveButton = $('#keeper-save-button');
+    if (saveButton) { saveButton.textContent = app.keeperSaving ? 'Saving…' : app.keeperDraftDirty ? 'Save keeper choices' : 'Keeper choices saved'; saveButton.disabled = locked || app.keeperSaving || !app.keeperDraftDirty; }
   }
 
   async function toggleKeeper(playerId) {
@@ -660,12 +669,14 @@
       if (!player.eligible) return toast(`${player.name} has used the full two-year keeper clock.`);
       app.selectedKeepers.push({id: player.id, name: player.name, position: player.position, acquisition: player.acquisition, yearsUsed: player.yearsUsed, lastCost: player.lastCost, baseCost: player.base, finalCost: player.final});
     }
-    localStorage.setItem(keeperStorageKey(), JSON.stringify(app.selectedKeepers)); renderKeepers();
-    await saveKeepers();
+    localStorage.setItem(keeperStorageKey(), JSON.stringify(app.selectedKeepers));
+    app.keeperDraftDirty = true;
+    renderKeepers();
   }
 
-  async function saveKeepers() {
-    if (!app.teamId || !app.ownership.length) { toast('Keeper draft saved here. The commissioner still needs to sync roster ownership.'); return; }
+  async function saveKeepers({silent = false} = {}) {
+    if (!app.teamId || !app.ownership.length) { if (!silent) toast('The commissioner still needs to sync roster ownership before saving.'); return false; }
+    app.keeperSaving = true; renderKeepers();
     try {
       const selections = app.selectedKeepers.map((keeper) => {
         const ownership = app.ownership.find((row) => String(row.players?.id) === String(keeper.id) || row.players?.name === keeper.name);
@@ -673,15 +684,28 @@
         return {ownership_history_id: ownership.id, last_cost_usd: keeper.lastCost, acquisition_type: keeper.acquisition === 'free_agent' ? 'free_agent' : 'auction', adp_usd: null, base_cost_usd: keeper.baseCost, final_cost_usd: keeper.finalCost, keeper_year_number: Math.min(2, Number(keeper.yearsUsed) + 1), eligibility_reason: keeper.acquisition === 'trade' ? 'Trade reset the keeper clock' : 'Validated from Sleeper draft and transaction history'};
       });
       await api('rpc/save_keeper_selections', {method: 'POST', body: JSON.stringify({target_season: app.seasonId, target_team: app.teamId, selections})});
-      await refreshData(); toast('Keeper choices saved to the league.');
-    } catch (reason) { toast(reason.message || 'Keeper choices could not be synced.'); }
+      app.keeperDraftDirty = false;
+      app.keeperSaving = false;
+      await refreshData();
+      if (!silent) toast('Keeper choices saved to the league.');
+      return true;
+    } catch (reason) {
+      app.keeperSaving = false;
+      renderKeepers();
+      if (!silent) toast(reason.message || 'Keeper choices could not be synced.');
+      return false;
+    }
   }
 
   async function lockKeepers() {
     if (app.teamBudget?.status === 'keepers_locked') return;
     const names = app.selectedKeepers.length ? app.selectedKeepers.map((keeper) => keeper.name).join(' and ') : 'no players';
     if (!confirm(`Lock ${names} as your final keeper decision? Only the commissioner can reopen it.`)) return;
-    try { await api('rpc/lock_keeper_selections', {method: 'POST', body: JSON.stringify({target_season: app.seasonId, target_team: app.teamId})}); await refreshData(); toast('Keeper decision locked.'); }
+    try {
+      if (!(await saveKeepers({silent: true}))) return toast('Save your keeper choices before locking them.');
+      await api('rpc/lock_keeper_selections', {method: 'POST', body: JSON.stringify({target_season: app.seasonId, target_team: app.teamId})});
+      await refreshData(); toast('Keeper decision locked.');
+    }
     catch (reason) { toast(reason.message || 'Keeper decision could not be locked.'); }
   }
 
@@ -892,6 +916,7 @@
     if (action === 'record-payment') recordPaymentModal();
     if (action === 'open-obligations') openObligationsModal();
     if (action === 'sync-rosters') importRosters();
+    if (action === 'save-keepers') saveKeepers();
     if (action === 'lock-keepers') lockKeepers();
     if (action === 'copy-invite') navigator.clipboard?.writeText(location.origin + location.pathname).then(() => toast('League link copied.'));
   });

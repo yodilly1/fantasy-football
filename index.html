@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f7f8fa">
   <title>Ugh Who Cares · League HQ</title>
-  <link rel="stylesheet" href="styles.css?v=release-13">
+  <link rel="stylesheet" href="styles.css?v=release-14">
 </head>
 <body>
   <div class="app-shell" id="app-shell" hidden>
@@ -65,7 +65,7 @@
       </section>
 
       <section class="view" id="view-keepers" hidden>
-        <div class="section-intro"><div><span class="kicker">2026 keeper decision</span><h2>Your roster, with every cost explained.</h2><p>Select up to two players. The calculator uses Sleeper’s 2025 auction, keeper, waiver, and trade history.</p></div><div class="inline-actions"><span class="status">2-year maximum</span><button class="button secondary admin-only" data-action="sync-rosters" hidden>Sync league rosters</button><button class="button primary" id="keeper-lock-button" data-action="lock-keepers">Lock keeper choices</button></div></div>
+        <div class="section-intro"><div><span class="kicker">2026 keeper decision</span><h2>Your roster, with every cost explained.</h2><p>Select zero, one, or two players. Save the set when you’re ready, then lock it for draft night.</p></div><div class="inline-actions"><span class="status">2-year maximum</span><button class="button secondary admin-only" data-action="sync-rosters" hidden>Sync league rosters</button><button class="button secondary" id="keeper-save-button" data-action="save-keepers">Save keeper choices</button><button class="button primary" id="keeper-lock-button" data-action="lock-keepers">Lock keeper choices</button></div></div>
         <div class="budget-strip" id="keeper-budget"><div><span>Selected</span><strong>0 / 2</strong></div><div><span>Keeper spend</span><strong>$0</strong></div><div><span>Auction budget left</span><strong>$200</strong></div></div>
         <article class="panel table-panel">
           <div class="panel-head table-heading"><div><h3>Current roster</h3><p>Non-keepers return to the auction pool.</p></div><div class="search"><input id="roster-search" type="search" placeholder="Search roster"></div></div>
@@ -122,6 +122,6 @@
   </section>
 
   <div class="modal-root" id="modal-root"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="https://accounts.google.com/gsi/client" async></script><script src="league-settings.js?v=release-13"></script><script src="league-app.js?v=release-13"></script>
+  <script src="https://accounts.google.com/gsi/client" async></script><script src="league-settings.js?v=release-14"></script><script src="league-app.js?v=release-14"></script>
 </body>
 </html>
