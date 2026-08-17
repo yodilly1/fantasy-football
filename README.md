@@ -9,7 +9,9 @@ Live app: https://ugh-who-cares.pages.dev/
 - Email-only league entry with one locked team assignment per account.
 - Commissioner dashboard showing connected and missing managers.
 - Draft availability from direct Google Calendar free/busy access, Outlook `.ics` import, or manual windows.
-- Two-hour draft-window ranking in Eastern and Israel time.
+- Multi-day manual availability and up to 24 two-hour draft-window suggestions weighted for Eastern and Israel-friendly hours.
+- Manager identity and replacement workflow separate from immutable Sleeper history.
+- In-app user guide for onboarding, scheduling, keepers, money, voting, and Sleeper data.
 - Sleeper-powered keeper calculator using 2024–2026 drafts, rosters, and transactions.
 - Maximum two keepers, two-year player clock, and trade clock resets.
 - Final keeper submission lock, with commissioner-only reopening.

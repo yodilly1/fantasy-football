@@ -42,7 +42,7 @@
     dashboard: ['2026 setup', 'League dashboard'], draft: ['Draft coordination', 'Draft time'],
     keepers: ['2026 roster', 'Keeper calculator'], votes: ['League decisions', 'Votes'],
     money: ['NIS ledger', 'League money'], rules: ['Constitution', 'League rules'],
-    history: ['Sleeper history', 'Record book'], teams: ['2026 rollover', 'League teams'],
+    history: ['Sleeper history', 'Record book'], teams: ['2026 rollover', 'League teams'], help: ['Quick start', 'How it works'],
   };
 
   function readJson(key) {
@@ -182,7 +182,7 @@
       api(`managers?id=eq.${app.managerId}&select=id,display_name,timezone,preferred_payment_currency`),
       api(`team_memberships?season_id=eq.${app.seasonId}&manager_id=eq.${app.managerId}&select=team_id,is_commissioner,teams(id,display_name,sleeper_team_id)`),
       api('managers?select=id,display_name,auth_user_id,timezone,preferred_payment_currency&order=display_name'),
-      api(`team_memberships?season_id=eq.${app.seasonId}&select=team_id,manager_id,is_commissioner,teams(id,display_name,sleeper_team_id),managers(id,display_name,auth_user_id)`),
+      api(`team_memberships?season_id=eq.${app.seasonId}&select=team_id,manager_id,is_commissioner,teams(id,display_name,sleeper_team_id),managers(id,display_name,auth_user_id,sleeper_username)`),
       api(`availability_blocks?season_id=eq.${app.seasonId}&select=*,managers(display_name)&order=starts_at`),
       api(`proposals?season_id=eq.${app.seasonId}&select=*&order=created_at.desc`),
       api('votes?select=proposal_id,manager_id,choice,comment'),
@@ -230,7 +230,7 @@
     choices.innerHTML = '<div class="empty-state">Loading available teams…</div>';
     try {
       const teams = await api('rpc/available_league_teams', {method: 'POST', body: '{}'});
-      choices.innerHTML = teams?.length ? teams.map((team) => `<button class="team-choice" data-claim-team="${team.team_id}"><span><b>${escapeHtml(team.display_name)}</b><small>Available to claim</small></span><span>Choose →</span></button>`).join('') : '<div class="empty-state">All twelve teams are claimed. Ask the commissioner to release the correct team.</div>';
+      choices.innerHTML = teams?.length ? teams.map((team) => `<button class="team-choice" data-claim-team="${team.team_id}"><span><b>${escapeHtml(team.manager_name || 'Manager')}</b><small>${escapeHtml(team.team_name || 'Team')}${team.sleeper_username ? ` · Sleeper: ${escapeHtml(team.sleeper_username)}` : ''}</small></span><span>Choose →</span></button>`).join('') : '<div class="empty-state">All twelve teams are claimed. Ask the commissioner to release the correct team.</div>';
     } catch {
       choices.innerHTML = '<div class="empty-state">Team selection is being upgraded. Ask the commissioner to finish database migration 0014.</div>';
     }
@@ -286,6 +286,19 @@
 
   function managerName(id) { return app.managers.find((manager) => manager.id === id)?.display_name || 'Manager'; }
 
+  function editManagerModal(teamId) {
+    if (!app.isCommissioner) return;
+    const membership = app.memberships.find((row) => row.team_id === teamId);
+    const manager = membership?.managers || app.managers.find((row) => row.id === membership?.manager_id);
+    if (!membership || !manager) return;
+    openModal({title: 'Update manager identity', copy: `This changes the league display name for ${membership.teams?.display_name || 'this team'}. Sleeper history stays unchanged.`, submitLabel: 'Save manager', body: `<div class="form-grid"><div class="field full"><label>Manager name</label><input id="manager-display-name" value="${escapeHtml(manager.display_name)}" required></div><div class="field full"><label>Sleeper username (optional)</label><input id="manager-sleeper-username" value="${escapeHtml(manager.sleeper_username || '')}" placeholder="Sleeper username"></div></div>`, onSubmit: async (modal) => {
+      const displayName = $('#manager-display-name', modal).value.trim(), sleeperUsername = $('#manager-sleeper-username', modal).value.trim();
+      if (!displayName) throw new Error('Enter the manager name.');
+      await api('rpc/admin_update_manager_identity', {method: 'POST', body: JSON.stringify({target_team: teamId, new_display_name: displayName, new_sleeper_username: sleeperUsername || null})});
+      await refreshData(); toast('Manager identity updated.'); return true;
+    }});
+  }
+
   function renderDashboard() {
     const connected = app.managers.filter((manager) => manager.auth_user_id).length;
     const availableManagers = new Set(app.blocks.filter((block) => block.availability !== 'unavailable').map((block) => block.manager_id)).size;
@@ -323,7 +336,7 @@
     const rows = app.memberships.map((membership) => ({
       teamId: membership.team_id, team: membership.teams?.display_name || 'Team', manager: membership.managers?.display_name || 'Manager', claimed: Boolean(membership.managers?.auth_user_id), locked: app.allTeamBudgets.find((budget) => budget.team_id === membership.team_id)?.status === 'keepers_locked',
     })).sort((a, b) => Number(a.claimed) - Number(b.claimed) || a.team.localeCompare(b.team));
-    panel.innerHTML = `<div class="panel-head"><div><span class="kicker">Commissioner</span><h3>Manager coverage</h3><p>Claimed teams are locked. Release one only when its manager needs to reconnect.</p></div><button class="button secondary" data-action="copy-invite">Copy league link</button></div><div class="rows">${rows.map((row) => `<div class="data-row"><div><b>${escapeHtml(row.team)}</b><small>${escapeHtml(row.manager)}</small></div><div class="row-actions">${row.locked ? '<span class="status success">Keepers locked</span>' : ''}<span class="status ${row.claimed ? 'success' : 'warning'}">${row.claimed ? 'Connected' : 'Missing'}</span>${row.locked ? `<button class="button secondary" data-reopen-team="${row.teamId}">Reopen keepers</button>` : ''}${row.claimed && row.teamId !== app.teamId ? `<button class="button danger" data-release-team="${row.teamId}">Release</button>` : ''}</div></div>`).join('')}</div>`;
+    panel.innerHTML = `<div class="panel-head"><div><span class="kicker">Commissioner</span><h3>Manager coverage</h3><p>Names are local league identities; Sleeper data remains historical and read-only.</p></div><button class="button secondary" data-action="copy-invite">Copy league link</button></div><div class="rows">${rows.map((row) => `<div class="data-row"><div><b>${escapeHtml(row.manager)}</b><small>${escapeHtml(row.team)}</small></div><div class="row-actions"><button class="button secondary" data-edit-manager="${row.teamId}">Edit</button>${row.locked ? '<span class="status success">Keepers locked</span>' : ''}<span class="status ${row.claimed ? 'success' : 'warning'}">${row.claimed ? 'Connected' : 'Missing'}</span>${row.locked ? `<button class="button secondary" data-reopen-team="${row.teamId}">Reopen keepers</button>` : ''}${row.claimed && row.teamId !== app.teamId ? `<button class="button danger" data-release-team="${row.teamId}">Release</button>` : ''}</div></div>`).join('')}</div>`;
   }
 
   function normalizeBlock(row) {
@@ -333,6 +346,23 @@
   function rankedWindows() {
     const blocks = app.blocks.map(normalizeBlock).filter((block) => block.status === 'open' || block.status === 'possible');
     const candidates = new Map();
+    const hourInZone = (iso, zone) => {
+      const parts = new Intl.DateTimeFormat('en-US', {timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23'}).formatToParts(new Date(iso)).reduce((out, part) => (out[part.type] = part.value, out), {});
+      return Number(parts.hour) + Number(parts.minute || 0) / 60;
+    };
+    const comfort = (hour, zone) => {
+      if (zone === 'Asia/Jerusalem') {
+        if (hour >= 18 && hour < 24) return 30;
+        if (hour >= 0 && hour < 1.5) return 22;
+        if (hour >= 16 && hour < 18) return 16;
+        if (hour >= 8 && hour < 16) return 8;
+        return -18;
+      }
+      if (hour >= 12 && hour < 21.5) return 24;
+      if (hour >= 9 && hour < 12) return 12;
+      if (hour >= 21.5 && hour < 23) return 2;
+      return -14;
+    };
     for (const block of blocks) {
       const start = new Date(block.utcStart).getTime();
       const end = new Date(block.utcEnd).getTime();
@@ -343,10 +373,13 @@
         covering.forEach((other) => { if (other.status === 'open' || !managerStatus.has(other.managerId)) managerStatus.set(other.managerId, other.status); });
         const open = [...managerStatus.values()].filter((status) => status === 'open').length;
         const possible = managerStatus.size - open;
-        candidates.set(key, {start: key, end: new Date(time + 7200000).toISOString(), open, possible, count: managerStatus.size, score: open * 2 + possible});
+        const endKey = new Date(time + 7200000).toISOString();
+        const israelComfort = comfort(hourInZone(key, 'Asia/Jerusalem'), 'Asia/Jerusalem');
+        const easternComfort = comfort(hourInZone(key, 'America/New_York'), 'America/New_York');
+        candidates.set(key, {start: key, end: endKey, open, possible, count: managerStatus.size, israelComfort, easternComfort, score: open * 100 + possible * 25 + israelComfort + easternComfort});
       }
     }
-    return [...candidates.values()].sort((a, b) => b.score - a.score || new Date(a.start) - new Date(b.start)).slice(0, 8);
+    return [...candidates.values()].sort((a, b) => b.score - a.score || new Date(a.start) - new Date(b.start)).slice(0, 24);
   }
 
   function renderDraft() {
@@ -355,7 +388,7 @@
     const managers = new Set(app.blocks.map((block) => block.manager_id)).size;
     $('#availability-progress').textContent = `${managers} / 12`;
     const windows = rankedWindows();
-    $('#draft-window-list').innerHTML = windows.length ? windows.map((window, index) => `<div class="data-row"><div><b>${formatInZone(window.start, 'America/New_York')} Eastern</b><small>${formatInZone(window.start, 'Asia/Jerusalem')} Israel · ${window.open} open${window.possible ? ` · ${window.possible} possible` : ''}</small></div><div class="row-actions"><span class="status ${window.count >= 10 ? 'success' : 'warning'}">${window.count} / 12</span>${app.isCommissioner ? `<button class="button secondary" data-select-draft="${index}">Select</button>` : ''}</div></div>`).join('') : '<div class="empty-state">Add open times to rank two-hour windows.</div>';
+    $('#draft-window-list').innerHTML = windows.length ? windows.map((window, index) => `<div class="data-row"><div><b>${formatInZone(window.start, 'America/New_York')} Eastern</b><small>${formatInZone(window.start, 'Asia/Jerusalem')} Israel · ${window.open} open${window.possible ? ` · ${window.possible} possible` : ''} · ${window.israelComfort >= 22 ? 'Israel-friendly' : window.israelComfort < 0 ? 'late in Israel' : 'reasonable in Israel'}</small></div><div class="row-actions"><span class="status ${window.count >= 10 ? 'success' : 'warning'}">${window.count} / 12</span>${app.isCommissioner ? `<button class="button secondary" data-select-draft="${index}">Select</button>` : ''}</div></div>`).join('') : '<div class="empty-state">Add open times to rank two-hour windows.</div>';
     const confirmed = app.draftOptions.find((option) => option.selected);
     const card = $('#confirmed-draft');
     card.hidden = !confirmed;
@@ -386,13 +419,22 @@
   function manualAvailabilityModal() {
     const today = new Date().toISOString().slice(0, 10); const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const zones = [...new Set([localZone, 'America/New_York', 'Asia/Jerusalem', 'America/Los_Angeles'])];
-    openModal({title: 'Add open time', copy: 'Enter the time in your own timezone. League HQ stores UTC and shows both Eastern and Israel time.', submitLabel: 'Save availability', body: `<div class="form-grid"><div class="field"><label>Date</label><input id="availability-date" type="date" value="${today}" required></div><div class="field"><label>Timezone</label><select id="availability-zone">${zones.map((zone) => `<option ${zone === localZone ? 'selected' : ''}>${zone}</option>`).join('')}</select></div><div class="field"><label>From</label><input id="availability-start" type="time" value="19:00" required></div><div class="field"><label>Until</label><input id="availability-end" type="time" value="23:00" required></div><div class="field full"><label>Availability</label><select id="availability-status"><option value="open">Open</option><option value="possible">Possible</option><option value="unavailable">Unavailable</option></select></div></div>`, onSubmit: async (modal) => {
-      const date = $('#availability-date', modal).value, zone = $('#availability-zone', modal).value, start = $('#availability-start', modal).value, end = $('#availability-end', modal).value, availability = $('#availability-status', modal).value;
-      if (!date || !start || !end) throw new Error('Add a complete date and time range.');
-      const startsAt = zonedDateToUtc(date, start, zone), endsAt = zonedDateToUtc(date, end, zone);
-      if (new Date(endsAt) <= new Date(startsAt)) throw new Error('The end time must be after the start time.');
-      await api('availability_blocks', {method: 'POST', headers: {Prefer: 'return=minimal'}, body: JSON.stringify({season_id: app.seasonId, manager_id: app.managerId, starts_at: startsAt, ends_at: endsAt, source: 'manual', availability})});
-      await refreshData(); toast('Availability saved.'); return true;
+    const days = [['0', 'Sun'], ['1', 'Mon'], ['2', 'Tue'], ['3', 'Wed'], ['4', 'Thu'], ['5', 'Fri'], ['6', 'Sat']];
+    openModal({title: 'Add availability across days', copy: 'Choose a date range and the days that work. Enter the time in your own timezone; League HQ stores UTC and shows both Eastern and Israel time.', submitLabel: 'Save availability', body: `<div class="form-grid"><div class="field"><label>First date</label><input id="availability-first" type="date" value="${today}" required></div><div class="field"><label>Last date</label><input id="availability-last" type="date" value="${today}" required></div><div class="field full"><label>Days included</label><div class="day-picker">${days.map(([value, label]) => `<label class="day-option"><input type="checkbox" name="availability-day" value="${value}" checked><span>${label}</span></label>`).join('')}</div></div><div class="field"><label>Timezone</label><select id="availability-zone">${zones.map((zone) => `<option ${zone === localZone ? 'selected' : ''}>${zone}</option>`).join('')}</select></div><div class="field"><label>From</label><input id="availability-start" type="time" value="19:00" required></div><div class="field"><label>Until</label><input id="availability-end" type="time" value="23:00" required></div><div class="field full"><label>Availability</label><select id="availability-status"><option value="open">Open</option><option value="possible">Possible</option><option value="unavailable">Unavailable</option></select></div></div>`, onSubmit: async (modal) => {
+      const first = $('#availability-first', modal).value, last = $('#availability-last', modal).value, zone = $('#availability-zone', modal).value, start = $('#availability-start', modal).value, end = $('#availability-end', modal).value, availability = $('#availability-status', modal).value, selectedDays = $$('input[name="availability-day"]:checked', modal).map((input) => Number(input.value));
+      if (!first || !last || !start || !end || !selectedDays.length) throw new Error('Choose dates, hours, and at least one day.');
+      if (new Date(last) < new Date(first)) throw new Error('The last date must be after the first date.');
+      const rows = [];
+      for (let day = new Date(`${first}T12:00:00`); day <= new Date(`${last}T12:00:00`); day.setDate(day.getDate() + 1)) {
+        if (!selectedDays.includes(day.getDay())) continue;
+        const date = day.toISOString().slice(0, 10), startsAt = zonedDateToUtc(date, start, zone);
+        let endsAt = zonedDateToUtc(date, end, zone);
+        if (new Date(endsAt) <= new Date(startsAt)) { const next = new Date(day); next.setDate(next.getDate() + 1); endsAt = zonedDateToUtc(next.toISOString().slice(0, 10), end, zone); }
+        rows.push({season_id: app.seasonId, manager_id: app.managerId, starts_at: startsAt, ends_at: endsAt, source: 'manual', availability});
+      }
+      if (!rows.length) throw new Error('No selected weekdays fall inside that date range.');
+      await api('availability_blocks', {method: 'POST', headers: {Prefer: 'return=minimal'}, body: JSON.stringify(rows)});
+      await refreshData(); toast(`${rows.length} availability windows saved.`); return true;
     }});
   }
 
@@ -688,7 +730,19 @@
     $('#team-grid').innerHTML = (current?.teams || []).map((team) => { const old = priorByRoster.get(String(team.roster_id)); return `<article class="panel team-card"><span class="kicker">${escapeHtml(team.display_name || 'Manager')}</span><h3>${escapeHtml(team.team_name)}</h3><p>${team.players?.length || 0} players on the 2026 rollover roster</p><div class="team-stats"><span><b>${old?.wins || 0}–${old?.losses || 0}</b>2025 record</span><span><b>${Number(old?.points || 0).toFixed(1)}</b>points</span></div></article>`; }).join('');
   }
 
-  function renderAll() { renderDashboard(); renderDraft(); renderKeepers(); renderVotes(); renderMoney(); renderRules(); renderHistory(); renderTeams(); }
+  function renderHelp() {
+    const cards = [
+      ['Start here', 'Sign in with your email, then choose the manager identity and team you control. Team assignments are locked; ask Lee before claiming the wrong entry.', ['If you are replacing someone, wait for the commissioner to update the manager identity.', 'Your availability, keepers, votes, and payments stay in the league database.']],
+      ['Draft time', 'Open Draft time and add as many windows as possible across multiple days.', ['Google Calendar reads busy/free time only.', 'Outlook can be imported from an .ics file.', 'Manual entry supports a date range, selected weekdays, timezone, and Open / Possible / Unavailable.']],
+      ['Keepers', 'Review every roster player, calculated keeper cost, and keeper clock before locking your choices.', ['Select no more than two players.', 'A player can be kept for two additional seasons.', 'A trade starts a new keeper clock for the acquiring team.']],
+      ['Money and votes', 'Money is tracked in shekels; auction values are separate fantasy dollars.', ['Record NIS payments or the USD equivalent with the agreed exchange rate.', 'Vote on buy-ins, payouts, scoring, keeper, draft, or other rule changes.', 'Seven yes votes passes a standard proposal.']],
+      ['Sleeper data', 'League HQ imports Sleeper rosters, standings, drafts, transactions, matchups, and history for reference.', ['Sleeper remains the official source for lineups, trades, waivers, and draft results.', 'The Sleeper API is read-only, so League HQ does not write changes back to Sleeper.']],
+      ['During the season', 'Use the record book and teams directory to review history, rosters, standings, draft prices, and league records.', ['If data looks wrong, tell Lee and identify the season, team, or player.', 'Do not create a second account or claim another manager’s team.']],
+    ];
+    $('#help-grid').innerHTML = cards.map(([title, description, list]) => `<article class="panel rule-card"><span class="kicker">Guide</span><h3>${title}</h3><p>${description}</p><ul class="rule-list">${list.map((item) => `<li>${item}</li>`).join('')}</ul></article>`).join('');
+  }
+
+  function renderAll() { renderDashboard(); renderDraft(); renderKeepers(); renderVotes(); renderMoney(); renderRules(); renderHistory(); renderTeams(); renderHelp(); }
 
   async function refreshData() { if (await hydrateMember()) showApp(); }
 
@@ -767,6 +821,7 @@
     const deleteBlock = event.target.closest('[data-delete-block]'); if (deleteBlock) { try { await api(`availability_blocks?id=eq.${deleteBlock.dataset.deleteBlock}`, {method: 'DELETE'}); await refreshData(); toast('Availability removed.'); } catch (reason) { toast(reason.message); } return; }
     const selectDraft = event.target.closest('[data-select-draft]'); if (selectDraft) return selectDraftWindow(Number(selectDraft.dataset.selectDraft));
     const release = event.target.closest('[data-release-team]'); if (release) return releaseTeam(release.dataset.releaseTeam);
+    const editManager = event.target.closest('[data-edit-manager]'); if (editManager) return editManagerModal(editManager.dataset.editManager);
     const reopen = event.target.closest('[data-reopen-team]'); if (reopen) { try { await api('rpc/reopen_keeper_selections', {method: 'POST', body: JSON.stringify({target_season: app.seasonId, target_team: reopen.dataset.reopenTeam})}); await refreshData(); toast('Keeper choices reopened.'); } catch (reason) { toast(reason.message || 'Keeper choices could not be reopened.'); } return; }
     const settlement = event.target.closest('[data-settlement]'); if (settlement) { try { await api(`settlements?id=eq.${settlement.dataset.settlement}`, {method: 'PATCH', body: JSON.stringify({status: settlement.dataset.status, confirmed_at: new Date().toISOString()})}); await refreshData(); toast('Payment confirmed.'); } catch (reason) { toast(reason.message); } return; }
     const retryAlert = event.target.closest('[data-retry-alert]'); if (retryAlert) { try { const result = await invokeFunction('send-proposal-alert', {proposalId: retryAlert.dataset.retryAlert}); await refreshData(); toast(`${result.sent} email alert${result.sent === 1 ? '' : 's'} sent.`); } catch (reason) { toast(reason.message || 'Email alert could not be sent.'); } return; }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f7f8fa">
   <title>Ugh Who Cares · League HQ</title>
-  <link rel="stylesheet" href="styles.css?v=release-2">
+  <link rel="stylesheet" href="styles.css?v=release-3">
 </head>
 <body>
   <div class="app-shell" id="app-shell" hidden>
@@ -21,6 +21,7 @@
         <button class="nav-item" data-view="rules"><span>§</span>Rules</button>
         <button class="nav-item" data-view="history"><span>↟</span>Record book</button>
         <button class="nav-item" data-view="teams"><span>◎</span>Teams</button>
+        <button class="nav-item" data-view="help"><span>?</span>How it works</button>
       </nav>
       <div class="season-card"><span>2026 keeper season</span><strong>12 teams · $200 auction</strong><small>NIS league money · USD auction values</small></div>
       <a class="sleeper-credit" href="https://sleeper.com/" target="_blank" rel="noreferrer" aria-label="League data provided by Sleeper"><span>League data by</span><img src="https://sleepercdn.com/images/v2/logos/logo_with_text_2.png" alt="Sleeper"></a>
@@ -49,7 +50,7 @@
       </section>
 
       <section class="view" id="view-draft" hidden>
-        <div class="section-intro"><div><span class="kicker">Draft coordination</span><h2>Find one time that works.</h2><p>Connect Google Calendar, import Outlook, or add open times manually. We store availability—not event names. Every result is shown in Eastern and Israel time.</p></div><button class="button primary" data-action="manual-availability">Add open time</button></div>
+        <div class="section-intro"><div><span class="kicker">Draft coordination</span><h2>Find one time that works.</h2><p>Connect Google Calendar, import Outlook, or add open times across multiple days manually. We store availability—not event names—and rank many realistic two-hour windows for both Eastern and Israel time.</p></div><button class="button primary" data-action="manual-availability">Add availability</button></div>
         <div class="provider-grid">
           <button class="provider" data-action="google-calendar"><span class="provider-icon">G</span><span><b>Google Calendar</b><small>Connect and find open windows</small></span><span>→</span></button>
           <button class="provider" data-calendar="Outlook"><span class="provider-icon outlook">O</span><span><b>Outlook</b><small>Import an exported .ics file</small></span><span>→</span></button>
@@ -58,7 +59,7 @@
         </div>
         <div class="two-column">
           <article class="panel"><div class="panel-head"><div><h3>Your open times</h3><p>Only your availability can be edited here.</p></div></div><div class="rows" id="availability-list"></div></article>
-          <article class="panel"><div class="panel-head"><div><h3>Best two-hour windows</h3><p>Ranked by unique manager overlap.</p></div><span class="status" id="availability-progress">0 / 12</span></div><div class="rows" id="draft-window-list"></div></article>
+          <article class="panel"><div class="panel-head"><div><h3>Best draft windows</h3><p>Up to 24 options, weighted for manager overlap and reasonable Israel hours.</p></div><span class="status" id="availability-progress">0 / 12</span></div><div class="rows" id="draft-window-list"></div></article>
         </div>
         <article class="panel confirmed-draft" id="confirmed-draft" hidden></article>
       </section>
@@ -98,6 +99,11 @@
         <div class="section-intro"><div><span class="kicker">League directory</span><h2>Twelve teams.</h2><p>Current 2026 rollover rosters and prior-season performance.</p></div></div>
         <div class="team-grid" id="team-grid"></div>
       </section>
+
+      <section class="view" id="view-help" hidden>
+        <div class="section-intro"><div><span class="kicker">Quick start</span><h2>Everything in one place.</h2><p>A short guide to the league workflows. Sleeper remains the official fantasy platform; League HQ handles coordination and records.</p></div></div>
+        <div class="rule-grid" id="help-grid"></div>
+      </section>
     </main>
   </div>
 
@@ -115,6 +121,6 @@
   </section>
 
   <div class="modal-root" id="modal-root"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="https://accounts.google.com/gsi/client" async></script><script src="league-settings.js?v=release-2"></script><script src="league-app.js?v=release-2"></script>
+  <script src="https://accounts.google.com/gsi/client" async></script><script src="league-settings.js?v=release-3"></script><script src="league-app.js?v=release-3"></script>
 </body>
 </html>
