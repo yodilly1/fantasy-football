@@ -440,18 +440,18 @@
     if (confirmed) card.innerHTML = `<div class="panel-head" style="margin:0"><div><span class="kicker" style="color:#b8cad8">Confirmed draft time</span><h3 style="font-size:20px;margin-top:8px">${formatInZone(confirmed.starts_at, 'America/New_York')} Eastern</h3><p>${formatInZone(confirmed.starts_at, 'Asia/Jerusalem')} Israel · two-hour auction window</p></div><span class="status success">Selected</span></div>`;
     if (confirmed && app.isCommissioner) {
       const controls = $('.status.success', card)?.parentElement;
-      if (controls) controls.insertAdjacentHTML('beforeend', '<button class="button secondary" data-action="change-draft-time">Change draft time</button>');
+      if (controls) controls.insertAdjacentHTML('beforeend', '<button class="button secondary" data-action="clear-draft-time">Remove draft time</button>');
     }
   }
 
-  function changeDraftTime() {
-    const list = $('#draft-window-list');
-    if (!list) return;
-    $('#confirmed-draft').hidden = true;
-    list.scrollIntoView({behavior: 'smooth', block: 'start'});
-    const firstOption = $('[data-select-draft]', list);
-    if (firstOption) firstOption.focus({preventScroll: true});
-    toast('Choose a new draft date below, then click Select.');
+  async function clearDraftTime() {
+    try {
+      await api('rpc/clear_draft_time', {method: 'POST', body: JSON.stringify({target_season: app.seasonId})});
+      await refreshData();
+      toast('Draft time removed. The league can keep collecting availability.');
+    } catch (reason) {
+      toast(reason.message || 'Draft time could not be removed.');
+    }
   }
 
   function zonedDateToUtc(date, time, zone) {
@@ -932,7 +932,7 @@
     const retryAlert = event.target.closest('[data-retry-alert]'); if (retryAlert) { try { const result = await invokeFunction('send-proposal-alert', {proposalId: retryAlert.dataset.retryAlert}); await refreshData(); toast(`${result.sent} email alert${result.sent === 1 ? '' : 's'} sent.`); } catch (reason) { toast(reason.message || 'Email alert could not be sent.'); } return; }
     const calendar = event.target.closest('[data-calendar]'); if (calendar) { app.calendarProvider = calendar.dataset.calendar; $('#calendar-file').click(); return; }
     const action = event.target.closest('[data-action]')?.dataset.action;
-    if (action === 'change-draft-time') return changeDraftTime();
+    if (action === 'clear-draft-time') return clearDraftTime();
     if (action === 'manual-availability') manualAvailabilityModal();
     if (action === 'google-calendar') calendarWindowModal({provider: 'Google Calendar', loadEvents: googleBusyEvents});
     if (action === 'new-proposal') proposalModal();
