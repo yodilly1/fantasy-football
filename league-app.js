@@ -447,9 +447,11 @@
   function changeDraftTime() {
     const list = $('#draft-window-list');
     if (!list) return;
+    $('#confirmed-draft').hidden = true;
     list.scrollIntoView({behavior: 'smooth', block: 'start'});
     const firstOption = $('[data-select-draft]', list);
     if (firstOption) firstOption.focus({preventScroll: true});
+    toast('Choose a new draft date below, then click Select.');
   }
 
   function zonedDateToUtc(date, time, zone) {
