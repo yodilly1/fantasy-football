@@ -1,0 +1,21 @@
+name: League notification worker
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  process-notifications:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process due league emails
+        env:
+          CRON_SECRET: ${{ secrets.NOTIFICATION_CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error \
+            -X POST \
+            -H "x-cron-secret: ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            "https://uiyxlvwkuhidylbenjzc.supabase.co/functions/v1/process-notification-jobs" \
+            --data '{}'

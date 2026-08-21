@@ -124,6 +124,11 @@
     return body;
   }
 
+  async function processNotificationJobs() {
+    try { return await invokeFunction('process-notification-jobs', {}); }
+    catch { return null; }
+  }
+
   function accountPassword(email) {
     const encoded = btoa(email.toLowerCase()).replace(/[^a-z0-9]/gi, '').slice(0, 48);
     return `UWC-2026-${encoded}-league`;
@@ -750,7 +755,7 @@
       const title = $('#proposal-title', modal).value.trim(), description = $('#proposal-description', modal).value.trim(); if (!title) throw new Error('Add a proposal title.');
       const created = await api('proposals', {method: 'POST', headers: {Prefer: 'return=representation'}, body: JSON.stringify({season_id: app.seasonId, author_manager_id: app.managerId, title, description: description || title, category: $('#proposal-category', modal).value, current_value: $('#proposal-current', modal).value.trim() || null, proposed_value: $('#proposal-value', modal).value.trim() || null, effective_season: Number($('#proposal-season', modal).value) || 2026, required_yes_votes: Math.floor((app.managers.length || 12) / 2) + 1, status: 'open'})});
       let notice = 'Proposal opened for voting.';
-      try { const alert = await invokeFunction('send-proposal-alert', {proposalId: created?.[0]?.id}); notice = `Proposal opened · ${alert.sent} email alert${alert.sent === 1 ? '' : 's'} sent.`; }
+      try { const alert = await invokeFunction('process-notification-jobs', {}); notice = `Proposal opened · ${alert.sent || 0} email alert${alert.sent === 1 ? '' : 's'} sent.`; }
       catch { notice = 'Proposal opened. Email delivery needs a retry.'; }
       await refreshData(); toast(notice); return true;
     }});
@@ -856,7 +861,14 @@
 
   function renderAll() { renderDashboard(); renderDraft(); renderKeepers(); renderVotes(); renderMoney(); renderRules(); renderHistory(); renderTeams(); renderHelp(); }
 
-  async function refreshData() { if (await hydrateMember()) showApp(); }
+  async function refreshData() {
+    if (await hydrateMember()) {
+      showApp();
+      // The queue is idempotent and catches due notifications on app activity.
+      await processNotificationJobs();
+      await hydrateMember();
+    }
+  }
 
   async function selectDraftWindow(index) {
     const window = rankedWindows()[index]; if (!window) return;
@@ -936,7 +948,7 @@
     const editManager = event.target.closest('[data-edit-manager]'); if (editManager) return editManagerModal(editManager.dataset.editManager);
     const reopen = event.target.closest('[data-reopen-team]'); if (reopen) { try { await api('rpc/reopen_keeper_selections', {method: 'POST', body: JSON.stringify({target_season: app.seasonId, target_team: reopen.dataset.reopenTeam})}); await refreshData(); toast('Keeper choices reopened.'); } catch (reason) { toast(reason.message || 'Keeper choices could not be reopened.'); } return; }
     const settlement = event.target.closest('[data-settlement]'); if (settlement) { try { await api(`settlements?id=eq.${settlement.dataset.settlement}`, {method: 'PATCH', body: JSON.stringify({status: settlement.dataset.status, confirmed_at: new Date().toISOString()})}); await refreshData(); toast('Payment confirmed.'); } catch (reason) { toast(reason.message); } return; }
-    const retryAlert = event.target.closest('[data-retry-alert]'); if (retryAlert) { try { const result = await invokeFunction('send-proposal-alert', {proposalId: retryAlert.dataset.retryAlert}); await refreshData(); toast(`${result.sent} email alert${result.sent === 1 ? '' : 's'} sent.`); } catch (reason) { toast(reason.message || 'Email alert could not be sent.'); } return; }
+    const retryAlert = event.target.closest('[data-retry-alert]'); if (retryAlert) { try { const result = await invokeFunction('process-notification-jobs', {}); await refreshData(); toast(`${result.sent || 0} email alert${result.sent === 1 ? '' : 's'} sent.`); } catch (reason) { toast(reason.message || 'Email alert could not be sent.'); } return; }
     const calendar = event.target.closest('[data-calendar]'); if (calendar) { app.calendarProvider = calendar.dataset.calendar; $('#calendar-file').click(); return; }
     const action = event.target.closest('[data-action]')?.dataset.action;
     if (action === 'clear-draft-time') return clearDraftTime();
