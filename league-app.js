@@ -604,11 +604,8 @@
 
   function keeperCost({acquisition, position, lastCost}) {
     if (acquisition === 'free_agent') return {base: 5, final: 5, potential: 5};
-    const floor = position === 'RB' ? 13 : position === 'WR' ? 14 : 0;
-    const median = position === 'RB' ? 27 : position === 'WR' ? 28 : 0;
-    const base = Number(lastCost || 0) + 5, final = Math.max(base, floor);
-    const potential = median && base < median ? Math.max(Number(lastCost || 0) + 8, floor + 8) : final;
-    return {base, final, potential};
+    const base = Number(lastCost || 0) + 5;
+    return {base, final: base, potential: base};
   }
 
   function consecutiveKeeperYears(playerId, rosterId) {
@@ -661,7 +658,7 @@
     $('#keeper-roster-body').innerHTML = roster.length ? roster.map((player) => {
       const selected = selectedIds.has(String(player.id));
       const source = player.acquisition === 'free_agent' ? 'Waiver / free agent' : player.acquisition === 'trade' ? 'Trade · clock reset' : player.acquisition === 'keeper' ? '2025 keeper' : '2025 auction';
-      const costNote = player.potential > player.final ? `Standard $${player.final}; ADP exception could be $${player.potential}` : player.acquisition === 'free_agent' ? 'Flat waiver price' : '$5 tax and position floor applied';
+      const costNote = player.acquisition === 'free_agent' ? 'Flat waiver / free-agent price' : '$5 added to last year\'s price';
       return `<tr class="${selected ? 'is-selected' : ''}"><td><div class="player"><b>${escapeHtml(player.name)}</b><small>${escapeHtml(player.position || '—')} · ${escapeHtml(player.team || 'FA')}</small></div></td><td><b>${source}</b></td><td class="money">${player.acquisition === 'free_agent' ? '—' : `$${player.lastCost}`}</td><td><span class="eligibility ${player.eligible ? '' : 'blocked'}">${player.eligible ? `${player.yearsUsed} of 2 used` : 'Two-year limit reached'}</span></td><td><span class="money">$${player.final}</span><div class="rule-note">${costNote}</div></td><td><button class="button ${selected ? 'secondary' : 'primary'}" data-keeper-player="${player.id}" ${locked || (!player.eligible && !selected) ? 'disabled' : ''}>${selected ? 'Remove' : 'Select'}</button></td></tr>`;
     }).join('') : '<tr><td colspan="6"><div class="empty-state">No players match that search.</div></td></tr>';
     const spend = displayedKeepers.reduce((total, player) => total + Number(player.finalCost ?? player.final ?? 0), 0);
@@ -796,8 +793,7 @@
     const scoring = current?.scoring_settings || {};
     const rules = [
       ['Keeper limit', 'Maximum two keepers. There are no positional limits.', ['A player can be kept for two additional seasons by the same team.', 'A traded player starts a new keeper clock with the acquiring team.']],
-      ['Keeper prices', 'Auction players and prior keepers cost last year’s price plus $5.', ['RB floor: $13', 'WR floor: $14', 'QB, TE, K, and DEF have no floor.', 'Waiver and free-agent keepers cost a flat $5.']],
-      ['ADP exception', 'For RB/WR only, if market ADP is above the positional median while the base price is below it, use the greater of last cost + $8 or floor + $8.', ['RB median: $27', 'WR median: $28']],
+      ['Keeper prices', 'Every drafted or previously kept player costs last year’s price plus $5.', ['No positional floors.', 'No ADP exception.', 'Waiver and free-agent keepers cost a flat $5.']],
       ['Auction', 'Each team starts with a $200 fantasy-dollar budget. Keeper costs are deducted before the auction.', ['All non-keepers return to the draft pool.', 'Auction dollars never mix with league payments.']],
       ['League money', 'Buy-ins, weekly prizes, and payouts are denominated in NIS.', ['Current buy-in: ₪350', 'Weekly high score: ₪45 including playoffs', 'USD settlement is allowed at a recorded exchange rate.']],
       ['2025 payout baseline', 'The historical workbook records the prior distribution.', ['First: ₪2,100', 'Second: ₪980', 'Third: ₪350']],

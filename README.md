@@ -15,7 +15,7 @@ Live app: https://ugh-who-cares.pages.dev/
 - Sleeper-powered keeper calculator using 2020–2026 drafts, rosters, and transactions.
 - Maximum two keepers, two-year player clock, and trade clock resets.
 - Final keeper submission lock, with commissioner-only reopening.
-- $200 auction budget with the workbook's keeper taxes, positional floors, waiver price, and ADP-exception range.
+- $200 auction budget with the passed 2026 keeper rule: last draft/keeper price + $5, no positional floors or ADP exception, and a flat $5 waiver/free-agent price.
 - Rule and side-bet proposals, one vote per manager, and majority-based decisions before the season kickoff.
 - Automatic email alerts to every connected manager when a proposal opens.
 - NIS obligations with either NIS or USD settlement and a recorded exchange rate.
@@ -36,9 +36,8 @@ Live app: https://ugh-who-cares.pages.dev/
 - A player may be kept for two additional seasons by the same team.
 - A trade starts a new clock for the acquiring team.
 - Auction/prior keeper: last cost + $5.
-- RB floor: $13; WR floor: $14; no floor for QB/TE/K/DEF.
+- No positional floors and no ADP exception.
 - Waiver/free agent: flat $5.
-- RB/WR ADP exception: the greater of last cost + $8 or floor + $8 when the workbook's median test applies.
 - Non-keepers return to the auction pool; keeper costs come out of the $200 budget.
 
 ## Stack and cost
