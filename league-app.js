@@ -637,6 +637,11 @@
         const lastCost = acquisition === 'free_agent' ? 0 : Number(pick?.metadata?.amount || 0);
         return {...player, acquisition, yearsUsed, lastCost, eligible: yearsUsed < 2, ...keeperCost({acquisition, position: player.position, lastCost})};
       }).sort((a, b) => ['QB','RB','WR','TE','K','DEF'].indexOf(a.position) - ['QB','RB','WR','TE','K','DEF'].indexOf(b.position) || a.name.localeCompare(b.name));
+      app.selectedKeepers = app.selectedKeepers.map((keeper) => {
+        const current = app.roster.find((player) => String(player.id) === String(keeper.id));
+        return current ? {...keeper, acquisition: current.acquisition, yearsUsed: current.yearsUsed, lastCost: current.lastCost, baseCost: current.base, finalCost: current.final} : keeper;
+      });
+      localStorage.setItem(keeperStorageKey(), JSON.stringify(app.selectedKeepers));
       renderKeepers();
     } catch (reason) {
       body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${escapeHtml(reason.message)}</div></td></tr>`;
@@ -692,7 +697,13 @@
     if (!app.teamId || !app.ownership.length) { if (!silent) toast('The commissioner still needs to sync roster ownership before saving.'); return false; }
     app.keeperSaving = true; renderKeepers();
     try {
-      const selections = app.selectedKeepers.map((keeper) => {
+      const normalizedKeepers = app.selectedKeepers.map((keeper) => {
+        const current = app.roster.find((player) => String(player.id) === String(keeper.id));
+        return current ? {...keeper, acquisition: current.acquisition, yearsUsed: current.yearsUsed, lastCost: current.lastCost, baseCost: current.base, finalCost: current.final} : keeper;
+      });
+      app.selectedKeepers = normalizedKeepers;
+      localStorage.setItem(keeperStorageKey(), JSON.stringify(app.selectedKeepers));
+      const selections = normalizedKeepers.map((keeper) => {
         const ownership = app.ownership.find((row) => String(row.players?.id) === String(keeper.id) || row.players?.name === keeper.name);
         if (!ownership) throw new Error(`${keeper.name} is missing from the roster sync.`);
         return {ownership_history_id: ownership.id, last_cost_usd: keeper.lastCost, acquisition_type: keeper.acquisition === 'free_agent' ? 'free_agent' : 'auction', adp_usd: null, base_cost_usd: keeper.baseCost, final_cost_usd: keeper.finalCost, keeper_year_number: Math.min(2, Number(keeper.yearsUsed) + 1), eligibility_reason: keeper.acquisition === 'trade' ? 'Trade reset the keeper clock' : 'Validated from Sleeper draft and transaction history'};
@@ -716,7 +727,7 @@
     const names = app.selectedKeepers.length ? app.selectedKeepers.map((keeper) => keeper.name).join(' and ') : 'no players';
     if (!confirm(`Lock ${names} as your final keeper decision? Only the commissioner can reopen it.`)) return;
     try {
-      if (!(await saveKeepers({silent: true}))) return toast('Save your keeper choices before locking them.');
+      if (!(await saveKeepers({silent: false}))) return;
       await api('rpc/lock_keeper_selections', {method: 'POST', body: JSON.stringify({target_season: app.seasonId, target_team: app.teamId})});
       await refreshData(); toast('Keeper decision locked.');
     }
