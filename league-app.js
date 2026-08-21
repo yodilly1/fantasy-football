@@ -427,7 +427,11 @@
     const dayLeaders = [...byDay.values()].map((rows) => rows[0]).sort((a, b) => b.score - a.score);
     const weekendDays = dayLeaders.filter(isWeekend).slice(0, 2);
     const weekdayDays = dayLeaders.filter((candidate) => !isWeekend(candidate)).slice(0, 6);
-    const selectedDays = [...new Map([...weekendDays, ...weekdayDays, ...dayLeaders].map((candidate) => [dayKey(candidate), candidate])).values()].slice(0, 8);
+    // Keep the agreed Thursday Aug 27, 1 PM Eastern window visible even when
+    // its weekday rank falls below the rotating shortlist cutoff.
+    const agreedAug27 = pool.find((candidate) => candidate.start.startsWith('2026-08-27T17:00:00.000Z'));
+    const priorityDays = agreedAug27 ? [agreedAug27] : [];
+    const selectedDays = [...new Map([...priorityDays, ...weekendDays, ...weekdayDays, ...dayLeaders].map((candidate) => [dayKey(candidate), candidate])).values()].slice(0, 8);
     const selectedDayKeys = new Set(selectedDays.map(dayKey));
     return pool.filter((candidate) => selectedDayKeys.has(dayKey(candidate))).slice(0, 16);
   }
