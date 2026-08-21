@@ -13,6 +13,10 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.NOTIFICATION_CRON_SECRET }}
         run: |
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "NOTIFICATION_CRON_SECRET is not configured; skipping notification worker."
+            exit 0
+          fi
           curl --fail-with-body --silent --show-error \
             -X POST \
             -H "x-cron-secret: ${CRON_SECRET}" \
