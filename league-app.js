@@ -766,6 +766,21 @@
   function renderVotes() {
     const root = $('#proposal-list');
     if (!app.proposals.length) { root.innerHTML = '<article class="panel"><div class="empty-state">No league proposals yet.</div></article>'; return; }
+    const buckets = {active: [], passed: [], failed: []};
+    const majority = Math.floor((app.managers.length || 12) / 2) + 1;
+    const card = (proposal, yes, no, mine, failed, displayStatus) => `<article class="panel proposal-card"><div class="proposal-meta"><span class="status">${escapeHtml(proposal.category)}</span><span class="status ${displayStatus === 'passed' ? 'success' : displayStatus === 'failed' ? 'danger' : ''}">${escapeHtml(displayStatus)}</span></div><h3>${escapeHtml(proposal.title)}</h3><p>${escapeHtml(proposal.description || proposal.proposed_value || '')}</p><div class="vote-tally"><div class="vote-count"><span>Yes · ${proposal.required_yes_votes || majority} needed</span><strong>${yes}</strong></div><div class="vote-count"><span>No</span><strong>${no}</strong></div></div>${proposal.status === 'open' && !failed ? `<div class="proposal-actions"><button class="button ${mine === 'yes' ? 'primary' : 'secondary'}" data-vote="${proposal.id}" data-choice="yes">Vote yes</button><button class="button ${mine === 'no' ? 'primary' : 'secondary'}" data-vote="${proposal.id}" data-choice="no">Vote no</button></div>` : ''}${failed && no >= 7 ? '<small class="failed-note">Closed after 7 no votes.</small>' : ''}</article>`;
+    app.proposals.forEach((proposal) => {
+      const votes = app.votes.filter((vote) => vote.proposal_id === proposal.id);
+      const yes = votes.filter((vote) => vote.choice === 'yes').length;
+      const no = votes.filter((vote) => vote.choice === 'no').length;
+      const mine = votes.find((vote) => vote.manager_id === app.managerId)?.choice;
+      const failed = no >= 7 || proposal.status === 'failed';
+      const bucket = failed ? 'failed' : proposal.status === 'passed' ? 'passed' : 'active';
+      buckets[bucket].push(card(proposal, yes, no, mine, failed, failed ? 'failed' : proposal.status));
+    });
+    const section = (title, copy, items, tone = '') => items.length ? `<section class="vote-section ${tone}"><div class="vote-section-head"><div><span class="kicker">${title}</span><p>${copy}</p></div><span class="status ${tone === 'failed-section' ? 'danger' : tone === 'passed-section' ? 'success' : ''}">${items.length}</span></div><div class="proposal-grid">${items.join('')}</div></section>` : '';
+    root.innerHTML = section('Active votes', 'Open decisions still waiting for the league.', buckets.active) + section('Passed votes', 'Approved decisions recorded for the league.', buckets.passed, 'passed-section') + section('Failed votes', 'Decisions with seven no votes or a failed status.', buckets.failed, 'failed-section');
+    return;
     root.innerHTML = app.proposals.map((proposal) => {
       const votes = app.votes.filter((vote) => vote.proposal_id === proposal.id), yes = votes.filter((vote) => vote.choice === 'yes').length, no = votes.filter((vote) => vote.choice === 'no').length, mine = votes.find((vote) => vote.manager_id === app.managerId)?.choice;
       const emailStatus = proposal.alert_sent_at ? `Email sent to ${proposal.alert_recipient_count || 0}` : proposal.alert_error ? 'Email needs retry' : 'Email pending';
