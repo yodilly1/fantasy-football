@@ -658,6 +658,7 @@
   }
 
   function renderKeepers() {
+    renderKeeperSignings();
     const search = ($('#roster-search')?.value || '').trim().toLowerCase();
     const locked = app.teamBudget?.status === 'keepers_locked';
     const displayedKeepers = locked
@@ -682,6 +683,25 @@
     if (lockButton) { lockButton.textContent = locked ? 'Keepers locked ✓' : 'Lock keeper choices'; lockButton.disabled = locked || app.keeperSaving; }
     const saveButton = $('#keeper-save-button');
     if (saveButton) { saveButton.textContent = app.keeperSaving ? 'Saving…' : app.keeperDraftDirty ? 'Save keeper choices' : 'Keeper choices saved'; saveButton.disabled = locked || app.keeperSaving || !app.keeperDraftDirty; }
+  }
+
+  function renderKeeperSignings() {
+    const root = $('#keeper-signings-board');
+    if (!root) return;
+    const lockedBudgets = app.allTeamBudgets.filter((budget) => budget.status === 'keepers_locked');
+    const lockedTeams = new Set(lockedBudgets.map((budget) => budget.team_id));
+    const totalKeepers = app.allKeeperSelections.filter((row) => lockedTeams.has(row.team_id)).length;
+    const totalSpend = app.allKeeperSelections.filter((row) => lockedTeams.has(row.team_id)).reduce((sum, row) => sum + Number(row.final_cost_usd || 0), 0);
+    const cards = lockedBudgets.map((budget) => {
+      const membership = app.memberships.find((row) => row.team_id === budget.team_id);
+      const teamName = membership?.teams?.display_name || 'Team';
+      const managerNameText = membership?.managers?.display_name || 'Manager';
+      const keepers = app.allKeeperSelections.filter((row) => row.team_id === budget.team_id);
+      const spend = keepers.reduce((sum, row) => sum + Number(row.final_cost_usd || 0), 0);
+      const rows = keepers.length ? keepers.map((keeper) => `<div class="signing-row"><div class="signing-player"><span class="position-chip">${escapeHtml(keeper.players?.position || '—')}</span><div><b>${escapeHtml(keeper.players?.name || 'Keeper')}</b><small>${Number(keeper.keeper_year_number || 1) === 2 ? 'Second keeper season' : 'First keeper season'}</small></div></div><strong class="signing-cost">$${Number(keeper.final_cost_usd || 0).toFixed(0)}</strong></div>`).join('') : '<div class="no-signings"><span class="empty-mark">—</span><div><b>No keepers</b><small>Full roster returns to the auction pool.</small></div></div>';
+      return `<article class="signing-card ${keepers.length ? '' : 'is-empty'}"><div class="signing-card-head"><div><span class="kicker">${keepers.length ? 'Signed' : 'No signing'}</span><h3>${escapeHtml(teamName)}</h3><p>${escapeHtml(managerNameText)}</p></div><span class="status ${keepers.length ? 'success' : ''}">${keepers.length} / 2</span></div><div class="signing-rows">${rows}</div><div class="signing-total"><span>Keeper commitment</span><strong>$${spend.toFixed(0)}</strong></div></article>`;
+    }).join('');
+    root.innerHTML = `<div class="signings-head"><div><span class="kicker">League-wide ledger</span><h3>The keeper signings</h3><p>${lockedBudgets.length} of ${app.allTeamBudgets.length || 12} teams locked · ${totalKeepers} players retained · $${totalSpend.toFixed(0)} committed before auction night.</p></div><span class="status success">${lockedBudgets.length} locked</span></div><div class="signing-grid">${cards || '<div class="empty-state">Keeper decisions are still coming in.</div>'}</div>`;
   }
 
   async function toggleKeeper(playerId) {
